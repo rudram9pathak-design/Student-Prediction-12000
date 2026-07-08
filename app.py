@@ -145,6 +145,28 @@ def score_input(container, feat):
                                 disabled=unknown, key=feat)
     return np.nan if unknown else val
 
+# ---------------------------------------------------------------------------
+# Master "pre-interview / fresher" toggle — one click instead of 11.
+# Lives OUTSIDE the form so it reruns the page immediately (form widgets only
+# update on submit). Its on_change callback writes into every individual
+# "<field>__na" checkbox's session_state *before* those checkboxes are drawn,
+# so they all flip together. Anyone can still untick an individual box
+# afterwards if a couple of scores actually are known.
+# ---------------------------------------------------------------------------
+def _sync_all_scores_to_master():
+    master_val = st.session_state.get("pre_interview_mode", False)
+    for feat in OPTIONAL_SCORE_FIELDS:
+        st.session_state[f"{feat}__na"] = master_val
+
+st.checkbox(
+    "🎓 Pre-interview / fresher profile — this student hasn't taken any tests or interviews yet",
+    key="pre_interview_mode",
+    on_change=_sync_all_scores_to_master,
+    help="One click marks every test/skill score below as 'not attempted' instead of ticking "
+         "each one individually. You can still untick a specific field afterwards if that one "
+         "score is actually known.",
+)
+
 with st.form("placement_form"):
     st.subheader("Academic Details")
     c1, c2, c3 = st.columns(3)
@@ -169,9 +191,9 @@ with st.form("placement_form"):
 
     st.subheader("Skills & Test Scores")
     st.caption(
-        "Hasn't sat for a particular test or interview yet? Tick **'Not attempted / no score "
-        "yet'** under that field instead of guessing a number — the model will estimate it "
-        "using typical values learned from the training data."
+        "Use the **Pre-interview / fresher** switch above to mark all scores as not "
+        "attempted in one click, or tick **'Not attempted / no score yet'** under an "
+        "individual field if only that one test hasn't happened yet."
     )
     c1, c2, c3 = st.columns(3)
     skill_fields = ["Technical_Skills_Score", "Soft_Skills_Score", "Aptitude_Test_Score",
