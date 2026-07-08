@@ -119,6 +119,32 @@ INT_FIELDS = {
 
 user_input = {}
 
+# Score-type fields that a student may not have attempted yet (pre-interview,
+# pre-aptitude-test, etc.). Ticking "Not attempted yet" sends a missing value
+# instead of a guessed number; the trained pipeline's imputer (median, learned
+# from the training data) fills it in — the same way it handles real missing
+# scores, so no retraining or extra logic is needed.
+OPTIONAL_SCORE_FIELDS = {
+    "Aptitude_Test_Score", "Logical_Reasoning_Score", "Quantitative_Ability_Score",
+    "Domain_Knowledge_Score", "English_Proficiency_Score", "Psychometric_Fit_Score",
+    "Coding_Platform_Rating", "Technical_Skills_Score", "Soft_Skills_Score",
+    "Resume_Score", "Communication_Rating",
+}
+
+def score_input(container, feat):
+    """Render a slider with a 'not attempted yet' checkbox. Returns NaN if checked."""
+    lo, hi = numeric_ranges[feat]
+    default = round((lo + hi) / 2, 1)
+    is_int = feat in INT_FIELDS
+    unknown = container.checkbox("Not attempted / no score yet", key=f"{feat}__na")
+    if is_int:
+        val = container.slider(FRIENDLY_LABELS[feat], int(lo), int(hi), int(default),
+                                disabled=unknown, key=feat)
+    else:
+        val = container.slider(FRIENDLY_LABELS[feat], float(lo), float(hi), float(default),
+                                disabled=unknown, key=feat)
+    return np.nan if unknown else val
+
 with st.form("placement_form"):
     st.subheader("Academic Details")
     c1, c2, c3 = st.columns(3)
@@ -142,24 +168,25 @@ with st.form("placement_form"):
             user_input[feat] = st.number_input(FRIENDLY_LABELS[feat], min_value=int(lo), max_value=int(hi) + 3, value=int(lo), step=1)
 
     st.subheader("Skills & Test Scores")
+    st.caption(
+        "Hasn't sat for a particular test or interview yet? Tick **'Not attempted / no score "
+        "yet'** under that field instead of guessing a number — the model will estimate it "
+        "using typical values learned from the training data."
+    )
     c1, c2, c3 = st.columns(3)
     skill_fields = ["Technical_Skills_Score", "Soft_Skills_Score", "Aptitude_Test_Score",
                      "Logical_Reasoning_Score", "Quantitative_Ability_Score", "Domain_Knowledge_Score",
                      "English_Proficiency_Score", "Psychometric_Fit_Score", "Resume_Score"]
     for i, feat in enumerate(skill_fields):
         col = [c1, c2, c3][i % 3]
-        lo, hi = numeric_ranges[feat]
-        default = round((lo + hi) / 2, 1)
         with col:
-            user_input[feat] = st.slider(FRIENDLY_LABELS[feat], float(lo), float(hi), float(default))
+            user_input[feat] = score_input(col, feat)
 
     c1, c2 = st.columns(2)
     with c1:
-        lo, hi = numeric_ranges["Communication_Rating"]
-        user_input["Communication_Rating"] = st.slider(FRIENDLY_LABELS["Communication_Rating"], int(lo), int(hi), int((lo+hi)//2))
+        user_input["Communication_Rating"] = score_input(c1, "Communication_Rating")
     with c2:
-        lo, hi = numeric_ranges["Coding_Platform_Rating"]
-        user_input["Coding_Platform_Rating"] = st.slider(FRIENDLY_LABELS["Coding_Platform_Rating"], float(lo), float(hi), float((lo+hi)/2))
+        user_input["Coding_Platform_Rating"] = score_input(c2, "Coding_Platform_Rating")
 
     st.subheader("Internships & Preparation")
     c1, c2, c3 = st.columns(3)
