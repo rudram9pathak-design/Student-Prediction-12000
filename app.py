@@ -235,6 +235,14 @@ div[data-baseweb="tab-border"]{ background-color: rgba(155,123,212,0.2) !importa
 .gt-badge-high{ background: rgba(201,162,39,0.18); color: var(--gt-gold-light); border: 1px solid rgba(201,162,39,0.4); }
 .gt-badge-mid{ background: rgba(155,123,212,0.18); color: var(--gt-purple-light); border: 1px solid rgba(155,123,212,0.4); }
 .gt-badge-low{ background: rgba(226,76,99,0.15); color: var(--gt-red); border: 1px solid rgba(226,76,99,0.4); }
+
+/* ---------- Sidebar ---------- */
+section[data-testid="stSidebar"]{
+    background: linear-gradient(180deg, #1B1030 0%, #130C22 100%) !important;
+    border-right: 1px solid rgba(155,123,212,0.18);
+}
+section[data-testid="stSidebar"] hr{ border-color: rgba(155,123,212,0.2); }
+section[data-testid="stSidebar"] a{ color: var(--gt-gold-light) !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -494,6 +502,52 @@ if "page" not in st.session_state:
     st.session_state.page = "home"
 if "result" not in st.session_state:
     st.session_state.result = None
+if "decision_threshold" not in st.session_state:
+    st.session_state.decision_threshold = 50
+
+# ---------------------------------------------------------------------------
+# Sidebar — Decision threshold / Model card / Developer card
+# (this is the left rail from the reference video; it stays visible on every page)
+# ---------------------------------------------------------------------------
+with st.sidebar:
+    st.markdown('<div class="gt-card-title">Decision threshold</div>', unsafe_allow_html=True)
+    st.markdown(
+        "<div class='gt-card-caption'>Flag as 'Placement-ready' when probability ≥</div>",
+        unsafe_allow_html=True,
+    )
+    st.session_state.decision_threshold = st.slider(
+        "Decision threshold", 0, 100, st.session_state.decision_threshold,
+        label_visibility="collapsed", key="decision_threshold_slider",
+    )
+    st.caption(
+        f"{st.session_state.decision_threshold/100:.2f} — raise it to be stricter "
+        "(more students get flagged for early help), lower it to be more lenient."
+    )
+
+    st.markdown("---")
+    st.markdown('<div class="gt-card-title">Model card</div>', unsafe_allow_html=True)
+    n_est = best_params.get("model__n_estimators", "—")
+    st.markdown(f"""
+    <div class="gt-card-caption">
+    Random Forest · {n_est} trees · trained on student placement records.<br><br>
+    Hold-out accuracy <b>{test_metrics['Accuracy']*100:.1f}%</b>,
+    ROC-AUC <b>{test_metrics['ROC-AUC']*100:.3f}</b>.<br><br>
+    Uses academics, skills, experience <i>and</i> background fields
+    (gender, home state, department, family income band, etc.)
+    present in the training data.
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown('<div class="gt-card-title">Developer</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="gt-card-caption">
+    <b style="color:#F3EFFB;">Rudram Pathak</b><br>
+    Machine Learning · Data Science<br><br>
+    🔗 <a href="https://www.linkedin.com/in/rudrampathak" target="_blank">LinkedIn</a><br>
+    💻 <a href="https://github.com/rudram9pathak-design/Student-Prediction-12000" target="_blank">GitHub Repo</a>
+    </div>
+    """, unsafe_allow_html=True)
 
 def go(page):
     st.session_state.page = page
@@ -706,10 +760,9 @@ elif st.session_state.page == "predict":
         row["Readiness_Index"] = row[["Technical_Skills_Score", "Soft_Skills_Score", "Aptitude_Test_Score",
                                        "Resume_Score", "Communication_Rating"]].mean(axis=1)
         proba = float(model.predict_proba(row)[0, 1])
-        pred = int(model.predict(row)[0])
         st.session_state.result = {
             "name": student_name.strip() or "This student",
-            "proba": proba, "pred": pred,
+            "proba": proba,
             "inputs": user_input,
         }
 
@@ -719,7 +772,7 @@ elif st.session_state.page == "predict":
     result = st.session_state.result
     if result:
         st.markdown("<br>", unsafe_allow_html=True)
-        placed = result["pred"] == 1
+        placed = result["proba"] * 100 >= st.session_state.decision_threshold
         proba_pct = result["proba"] * 100
 
         col_left, col_right = st.columns([1.1, 1])
@@ -913,20 +966,23 @@ elif st.session_state.page == "batch":
                 st.info("Filled with defaults — not present (or partly missing) in your file: " +
                         ", ".join(sorted(set(defaulted_cols))))
 
-            scored = engineer_features(score_df)
             try:
+                scored = engineer_features(score_df)
                 proba = model.predict_proba(scored[REQUIRED_BATCH_COLUMNS + ENGINEERED_FEATURES])[:, 1]
             except Exception as e:
                 st.error(f"Couldn't score this file with the current model: {e}")
+                with st.expander("Show full error details"):
+                    st.exception(e)
                 proba = None
 
             if proba is not None:
                 score_df["Placement_Probability"] = (proba * 100).round(1)
 
                 st.markdown("<br>", unsafe_allow_html=True)
-                threshold = st.slider(
-                    "Decision threshold — flag as 'Placement-ready' when probability ≥",
-                    0, 100, 50, help="0.50 (50%) is what the model was tuned against.",
+                threshold = st.session_state.decision_threshold
+                st.caption(
+                    f"Using the decision threshold from the sidebar — flagging as "
+                    f"'Placement-ready' when probability ≥ {threshold}%."
                 )
                 score_df["Predicted_Status"] = np.where(
                     score_df["Placement_Probability"] >= threshold, "Placed", "Not Placed"
@@ -1066,8 +1122,9 @@ elif st.session_state.page == "performance":
           min samples leaf `{best_params.get('model__min_samples_leaf', '—')}`,
           max features `{best_params.get('model__max_features', '—')}`,
           max depth `{best_params.get('model__max_depth') or 'unlimited'}`
-        - **Inputs used:** academics, skills and experience signals only — no gender or college
-          demographics are used to drive the prediction.
+        - **Inputs used:** academic history, skill/test scores, internship & activity signals,
+          plus background fields (gender, home state, department, family income band, etc.)
+          that were present in the training data.
         """)
 
 st.markdown(
