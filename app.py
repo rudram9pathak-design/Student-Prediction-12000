@@ -14,8 +14,7 @@ import joblib
 import numpy as np
 import pandas as pd
 
-import streamlit as st
-from fpdf import FPDF
+import streamlit as stfrom fpdf import FPDF
 
 st.set_page_config(page_title="Student Placement Predictor", page_icon="🎓", layout="centered")
 
