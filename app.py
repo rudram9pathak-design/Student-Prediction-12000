@@ -1,600 +1,427 @@
 """
-Student Placement Prediction — Streamlit App (GT Bharat dashboard theme)
-Loads the trained pipeline (model.pkl) produced by Student_Placement_Prediction.ipynb
-and serves an interactive, dashboard-style prediction experience
-(Home / Predict / About) with a live placement-probability gauge.
-
-Files needed alongside this script when deploying:
-    app.py, model.pkl, feature_schema.json, requirements.txt, logo.png,
-    .streamlit/config.toml
-
-Run locally:   streamlit run app.py
-Deploy:        push this folder to a GitHub repo, then deploy on
-                https://share.streamlit.io pointing at app.py
+Student Placement Prediction — Streamlit App
+Loads the trained pipeline (model.pkl) and predicts placement status +
+probability score from user-entered student details, then renders a full
+visual report (gauge, radar chart, benchmark comparisons, key drivers) and
+lets the user download a PDF version of the report.
 """
-import json
+
+import io
+from datetime import datetime
+
 import joblib
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
-import streamlit.components.v1 as components
+from fpdf import FPDF
 
-st.set_page_config(
-    page_title="Student Placement Predictor | GT Bharat",
-    page_icon="logo.png",
-    layout="centered",
+st.set_page_config(page_title="Student Placement Predictor", page_icon="🎓", layout="centered")
+
+
+@st.cache_resource
+def load_artifacts():
+    model = joblib.load("model.pkl")
+    meta = joblib.load("feature_meta.pkl")
+    return model, meta
+
+
+model, meta = load_artifacts()
+
+st.title("🎓 Student Placement Prediction")
+st.write(
+    "Enter a student's academic and skill profile below to predict whether "
+    "they are likely to be **Placed** or **Not Placed**, along with a full "
+    "visual report."
 )
 
-# ---------------------------------------------------------------------------
-# Theme — GT Bharat purple / gold, dark dashboard surface
-# ---------------------------------------------------------------------------
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+STATES = ["Delhi", "Gujarat", "Rajasthan", "Madhya Pradesh", "Uttar Pradesh",
+          "Karnataka", "Tamil Nadu", "Maharashtra"]
+CITIES = ["Jaipur", "Bhopal", "Bengaluru", "Delhi", "Chennai", "Indore",
+          "Mumbai", "Lucknow", "Ahmedabad", "Pune"]
+COLLEGE_TYPES = ["Private", "Autonomous", "Government"]
+DEGREE_STREAMS = ["BCA", "B.Sc", "MCA", "BBA", "B.Com", "MBA", "B.Tech"]
 
-:root{
-    --gt-purple-deep:   #2E1854;
-    --gt-purple:        #4F2D7F;
-    --gt-purple-light:  #9B7BD4;
-    --gt-purple-mist:   #241A38;
-    --gt-gold:          #C9A227;
-    --gt-gold-light:    #E9CE6D;
-    --gt-red:           #E24C63;
-    --gt-ink:           #F3EFFB;
-    --gt-muted:         #A79CC0;
-    --gt-card-bg:       #17102A;
-    --gt-card-bg-2:     #1E1633;
+# Typical "placed student" reference profile used only to give the report
+# something to benchmark against on the charts. These are placeholder
+# figures — swap in real averages computed from your training data
+# (e.g. df[df.Placed == 1].mean()) for a more accurate comparison.
+BENCHMARK = {
+    "10th_Percentage": 82, "12th_Percentage": 80, "Graduation_Percentage": 75,
+    "CGPA": 8.0, "Aptitude_Score": 78, "Coding_Score": 78, "Technical_Score": 78,
+    "Communication_Score": 75, "Mock_Interview_Score": 75, "Resume_Score": 78,
 }
 
-html, body, [class*="css"]  { font-family: 'Inter', sans-serif; }
-h1, h2, h3, .gt-display { font-family: 'Poppins', sans-serif; }
+with st.form("student_form"):
+    st.subheader("Profile")
+    col1, col2 = st.columns(2)
+    with col1:
+        gender = st.selectbox("Gender", ["Male", "Female"])
+        age = st.number_input("Age", min_value=17, max_value=30, value=21)
+        state = st.selectbox("State", STATES)
+        city = st.selectbox("City", CITIES)
+    with col2:
+        college_type = st.selectbox("College Type", COLLEGE_TYPES)
+        degree_stream = st.selectbox("Degree Stream", DEGREE_STREAMS)
+        internship = st.selectbox("Internship Experience", ["Yes", "No"])
+        internship_months = st.slider("Internship Months", 0, 12, 0)
 
-.stApp{ background: radial-gradient(ellipse at top, #201335 0%, #0F0A1C 55%, #0B0715 100%); }
-#MainMenu, footer, header[data-testid="stHeader"] { visibility: hidden; height: 0; }
-.block-container { padding-top: 1.2rem; max-width: 900px; }
-p, span, label, .stMarkdown, div[data-testid="stCaptionContainer"] { color: var(--gt-ink); }
-.stCaption, [data-testid="stCaptionContainer"] p { color: var(--gt-muted) !important; }
+    st.subheader("Academics")
+    col3, col4, col5 = st.columns(3)
+    with col3:
+        ssc = st.slider("10th Percentage", 0, 100, 75)
+        hsc = st.slider("12th Percentage", 0, 100, 75)
+    with col4:
+        grad = st.slider("Graduation Percentage", 0, 100, 70)
+        cgpa = st.slider("CGPA", 0.0, 10.0, 7.0, step=0.01)
+    with col5:
+        backlogs = st.number_input("Backlogs", min_value=0, max_value=15, value=0)
+        attendance = st.slider("Attendance (%)", 0, 100, 80)
 
-/* ---------- Banner ---------- */
-.gt-banner{
-    background: linear-gradient(120deg, var(--gt-purple-deep) 0%, var(--gt-purple) 100%);
-    border-radius: 16px;
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-    margin-bottom: 14px;
-}
-.gt-banner-left{ display:flex; align-items:center; gap:12px; }
-.gt-wordmark{ display:flex; flex-direction:column; line-height:1.05; }
-.gt-wordmark .gt-name{ color:#FFFFFF; font-family:'Poppins',sans-serif; font-weight:700; font-size:1rem; letter-spacing:0.05em; text-transform:uppercase; }
-.gt-wordmark .gt-sub{ color: var(--gt-gold-light); font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; margin-top:2px; }
+    st.subheader("Skills & Activities")
+    col6, col7, col8 = st.columns(3)
+    with col6:
+        projects = st.number_input("Projects", min_value=0, max_value=15, value=3)
+        certifications = st.number_input("Certifications", min_value=0, max_value=15, value=2)
+    with col7:
+        aptitude = st.slider("Aptitude Score", 0, 100, 70)
+        coding = st.slider("Coding Score", 0, 100, 70)
+        technical = st.slider("Technical Score", 0, 100, 70)
+    with col8:
+        communication = st.slider("Communication Score", 0, 100, 70)
+        mock_interview = st.slider("Mock Interview Score", 0, 100, 70)
+        resume = st.slider("Resume Score", 0, 100, 70)
 
-/* ---------- Nav buttons ---------- */
-div[data-testid="column"] div.stButton > button{
-    border-radius: 999px !important;
-    font-family:'Poppins',sans-serif; font-weight:600; font-size:0.85rem;
-    padding: 0.5rem 0.4rem;
-}
-div.stButton > button[kind="secondary"]{
-    background: var(--gt-card-bg-2);
-    color: var(--gt-ink);
-    border: 1px solid rgba(155,123,212,0.25);
-}
-div.stButton > button[kind="primary"]{
-    background: linear-gradient(120deg, var(--gt-purple) 0%, var(--gt-purple-light) 100%);
-    color: #fff; border: none;
-    box-shadow: 0 6px 18px rgba(79,45,127,0.5);
-}
+    submitted = st.form_submit_button("Predict Placement", use_container_width=True)
 
-/* ---------- Hero card ---------- */
-.gt-hero{
-    background: linear-gradient(135deg, var(--gt-purple-deep) 0%, #1B1030 100%);
-    border: 1px solid rgba(155,123,212,0.2);
-    border-radius: 20px;
-    padding: 40px 36px;
-    margin-top: 10px;
-}
-.gt-hero .gt-eyebrow-text{ color: var(--gt-gold-light); font-weight:700; font-size:0.9rem; margin-bottom:10px; }
-.gt-hero h1{ font-family:'Poppins',sans-serif; font-weight:800; font-size:2rem; color:#fff; margin: 0 0 12px 0; line-height:1.2; }
-.gt-hero p{ color: var(--gt-muted); font-size:1rem; max-width: 520px; }
 
-/* ---------- Section eyebrow / card ---------- */
-.gt-card-title{ font-family:'Poppins',sans-serif; font-weight:700; color: var(--gt-gold-light); font-size:1.02rem; margin-bottom:2px; }
-.gt-card-caption{ color: var(--gt-muted); font-size:0.85rem; margin-bottom: 14px; }
+# --------------------------------------------------------------------------
+# Chart builders
+# --------------------------------------------------------------------------
 
-div[data-testid="stVerticalBlockBorderWrapper"]{
-    background: var(--gt-card-bg) !important;
-    border: 1px solid rgba(155,123,212,0.18) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-}
+def build_gauge(probability: float) -> go.Figure:
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=probability * 100,
+        number={"suffix": "%"},
+        title={"text": "Placement Probability"},
+        gauge={
+            "axis": {"range": [0, 100]},
+            "bar": {"color": "#1f77b4"},
+            "steps": [
+                {"range": [0, 40], "color": "#f8d7da"},
+                {"range": [40, 70], "color": "#fff3cd"},
+                {"range": [70, 100], "color": "#d4edda"},
+            ],
+            "threshold": {
+                "line": {"color": "black", "width": 3},
+                "thickness": 0.8,
+                "value": probability * 100,
+            },
+        },
+    ))
+    fig.update_layout(height=280, margin=dict(l=20, r=20, t=50, b=10))
+    return fig
 
-/* ---------- Inputs on dark surface ---------- */
-div[data-testid="stTextInput"] input, div[data-testid="stNumberInput"] input{
-    background: var(--gt-card-bg-2) !important;
-    color: var(--gt-ink) !important;
-    border: 1px solid rgba(155,123,212,0.25) !important;
-    border-radius: 10px !important;
-}
-div[data-baseweb="select"] > div{
-    background: var(--gt-card-bg-2) !important;
-    border-color: rgba(155,123,212,0.25) !important;
-    border-radius: 10px !important;
-}
 
-/* ---------- Radio pills (Yes/No, checklist) ---------- */
-div[data-testid="stRadio"] > div{ gap: 8px; }
-div[data-testid="stRadio"] label{
-    background: var(--gt-card-bg-2);
-    border: 1px solid rgba(155,123,212,0.25);
-    border-radius: 999px;
-    padding: 4px 14px !important;
-    margin: 2px 4px 2px 0 !important;
-}
+def build_radar(student_scores: dict, benchmark_scores: dict) -> go.Figure:
+    categories = list(student_scores.keys())
+    student_vals = list(student_scores.values())
+    bench_vals = [benchmark_scores[c] for c in categories]
 
-/* ---------- Buttons (form submit) ---------- */
-div[data-testid="stFormSubmitButton"] > button{
-    background: linear-gradient(120deg, var(--gt-purple) 0%, var(--gt-gold) 160%);
-    color: #fff; border: none; border-radius: 12px;
-    font-family:'Poppins',sans-serif; font-weight:700; letter-spacing:0.02em;
-    padding: 0.85rem 1.2rem; font-size: 1rem;
-    box-shadow: 0 8px 22px rgba(79,45,127,0.45);
-}
-
-/* ---------- Expander ---------- */
-div[data-testid="stExpander"]{
-    border: 1px solid rgba(155,123,212,0.2) !important;
-    border-radius: 14px !important;
-    background: var(--gt-card-bg);
-}
-
-/* ---------- Result cards ---------- */
-.gt-result-card{
-    background: var(--gt-card-bg);
-    border: 1px solid rgba(155,123,212,0.2);
-    border-radius: 18px;
-    padding: 22px 24px;
-    height: 100%;
-}
-.gt-eyebrow-small{ color: var(--gt-gold-light); font-weight:700; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px; }
-.gt-result-name{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.5rem; color:#fff; margin: 2px 0 10px 0; }
-.gt-pill{ display:inline-block; border-radius:999px; padding: 5px 16px; font-weight:700; font-size:0.85rem; margin-bottom: 12px; }
-.gt-pill-win{ background: rgba(201,162,39,0.18); color: var(--gt-gold-light); border: 1px solid rgba(201,162,39,0.4); }
-.gt-pill-risk{ background: rgba(226,76,99,0.15); color: var(--gt-red); border: 1px solid rgba(226,76,99,0.4); }
-.gt-result-body{ color: var(--gt-muted); font-size: 0.95rem; line-height:1.5; }
-
-/* ---------- Gauge ---------- */
-.gt-gauge-wrap{ display:flex; flex-direction:column; align-items:center; }
-.gt-gauge{
-    width:168px; height:168px; border-radius:50%;
-    background: conic-gradient(var(--gauge-color) calc(var(--pct)*1%), rgba(255,255,255,0.07) 0);
-    display:flex; align-items:center; justify-content:center;
-    margin: 6px auto 4px auto;
-}
-.gt-gauge-inner{
-    width:130px; height:130px; border-radius:50%;
-    background: var(--gt-card-bg);
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-}
-.gt-gauge-value{ font-family:'Poppins',sans-serif; font-size:1.55rem; font-weight:800; color:#fff; }
-.gt-gauge-label{ font-size:0.62rem; letter-spacing:0.1em; color: var(--gt-muted); margin-top:4px; text-transform:uppercase; }
-
-.gt-track{
-    width:100%; height:8px; border-radius:999px; margin: 14px 0 10px 0;
-    background: rgba(255,255,255,0.08); overflow:hidden;
-}
-.gt-track-fill{ height:100%; border-radius:999px; background: linear-gradient(90deg, var(--gt-purple-light), var(--gt-gold)); }
-
-.gt-stat-row{ display:flex; justify-content:space-between; margin-top: 6px; }
-.gt-stat-label{ color: var(--gt-muted); font-size:0.8rem; }
-.gt-stat-value{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.15rem; color: var(--gt-gold-light); }
-
-.gt-footer{ text-align:center; color: var(--gt-muted); font-size:0.78rem; margin-top: 30px; padding-bottom: 10px; }
-</style>
-""", unsafe_allow_html=True)
-
-# ---------------------------------------------------------------------------
-# Banner
-# ---------------------------------------------------------------------------
-st.markdown("""
-<div class="gt-banner">
-  <div class="gt-banner-left">
-    <svg width="38" height="38" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="gtGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#E9CE6D"/>
-          <stop offset="100%" stop-color="#9B7BD4"/>
-        </linearGradient>
-      </defs>
-      <circle cx="100" cy="128" r="77" fill="none" stroke="url(#gtGrad)" stroke-width="30"/>
-      <circle cx="156" cy="128" r="77" fill="none" stroke="url(#gtGrad)" stroke-width="30" opacity="0.85"/>
-    </svg>
-    <div class="gt-wordmark">
-      <span class="gt-name">Grant Thornton Bharat</span>
-      <span class="gt-sub">Student Placement Predictor</span>
-    </div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
-# ---------------------------------------------------------------------------
-# Load model + schema
-# ---------------------------------------------------------------------------
-@st.cache_resource
-def load_model():
-    return joblib.load("model.pkl")
-
-@st.cache_data
-def load_schema():
-    with open("feature_schema.json") as f:
-        return json.load(f)
-
-model = load_model()
-schema = load_schema()
-
-numeric_ranges = schema["numeric_ranges"]
-categorical_options = schema["categorical_options"]
-top_features = schema["top_features"]
-test_metrics = schema["test_metrics"]
-
-# ---------------------------------------------------------------------------
-# Nav state
-# ---------------------------------------------------------------------------
-if "page" not in st.session_state:
-    st.session_state.page = "home"
-if "result" not in st.session_state:
-    st.session_state.result = None
-
-def go(page):
-    st.session_state.page = page
-
-nav1, nav2, nav3 = st.columns(3)
-with nav1:
-    st.button("🏠 Home", use_container_width=True, key="nav_home",
-              type="primary" if st.session_state.page == "home" else "secondary",
-              on_click=go, args=("home",))
-with nav2:
-    st.button("🔮 Predict", use_container_width=True, key="nav_predict",
-              type="primary" if st.session_state.page == "predict" else "secondary",
-              on_click=go, args=("predict",))
-with nav3:
-    st.button("ℹ️ About", use_container_width=True, key="nav_about",
-              type="primary" if st.session_state.page == "about" else "secondary",
-              on_click=go, args=("about",))
-
-# ---------------------------------------------------------------------------
-# HOME
-# ---------------------------------------------------------------------------
-if st.session_state.page == "home":
-    st.markdown("""
-    <div class="gt-hero">
-      <div class="gt-eyebrow-text">Welcome!</div>
-      <h1>See the next step in every student's placement journey.</h1>
-      <p>Use a tuned placement model and a clear academic profile to understand
-      placement likelihood with confidence.</p>
-    </div>
-    """, unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.button("🔮 Predict Placement", type="primary", on_click=go, args=("predict",))
-
-# ---------------------------------------------------------------------------
-# ABOUT
-# ---------------------------------------------------------------------------
-elif st.session_state.page == "about":
-    with st.container(border=True):
-        st.markdown('<div class="gt-card-title">About this model</div>', unsafe_allow_html=True)
-        st.markdown('<div class="gt-card-caption">Random Forest, tuned via RandomizedSearchCV</div>', unsafe_allow_html=True)
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Test Accuracy", f"{test_metrics['Accuracy']*100:.1f}%")
-        c2.metric("F1 Score", f"{test_metrics['F1 Score']*100:.1f}%")
-        c3.metric("ROC-AUC", f"{test_metrics['ROC-AUC']*100:.1f}%")
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown('<div class="gt-card-title" style="font-size:0.95rem;">Top drivers of placement</div>', unsafe_allow_html=True)
-        st.write(", ".join(top_features[:8]))
-
-# ---------------------------------------------------------------------------
-# PREDICT
-# ---------------------------------------------------------------------------
-elif st.session_state.page == "predict":
-
-    FRIENDLY_LABELS = {
-        "Age": "Age", "Study_Hours_Per_Day": "Study Hours per Day", "CGPA": "CGPA (out of 10)",
-        "History_of_Backlogs": "History of Backlogs (count)", "Active_Backlogs": "Active Backlogs (count)",
-        "Technical_Skills_Score": "Technical Skills Score", "Soft_Skills_Score": "Soft Skills Score",
-        "Aptitude_Test_Score": "Aptitude Test Score", "Internships_Completed": "Internships Completed",
-        "Internship_Duration_Months": "Internship Duration (months)",
-        "Internship_PPO_Offered": "Pre-Placement Offer (PPO) from Internship?",
-        "Academic_Projects_Count": "Academic Projects Count", "Certifications_Count": "Certifications Count",
-        "Hackathon_Participations": "Hackathon Participations",
-        "Coding_Platform_Rating": "Coding Platform Rating (e.g. Codeforces/LeetCode)",
-        "Attendance_Percentage": "Attendance Percentage", "Mock_Interviews_Attended": "Mock Interviews Attended",
-        "10th_Percentage": "10th Percentage", "12th_Percentage": "12th Percentage",
-        "Is_First_Generation_Graduate": "First-Generation Graduate?", "Scholarship_Received": "Scholarship Received?",
-        "Extra_Curricular_Activities": "Extra-Curricular Activities?", "Leadership_Role_Held": "Leadership Role Held?",
-        "LinkedIn_Profile_Updated": "LinkedIn Profile Updated?", "Resume_Score": "Resume Score",
-        "Communication_Rating": "Communication Rating (1-5)", "Logical_Reasoning_Score": "Logical Reasoning Score",
-        "Quantitative_Ability_Score": "Quantitative Ability Score", "Domain_Knowledge_Score": "Domain Knowledge Score",
-        "English_Proficiency_Score": "English Proficiency Score", "Psychometric_Fit_Score": "Psychometric Fit Score",
-        "Travel_Ready": "Travel Ready?", "Relocation_Ready": "Relocation Ready?", "Prefers_WFH": "Prefers Work From Home?",
-        "Overtime_Ready": "Overtime Ready?", "Tech_Club_Member": "Tech Club Member?",
-        "Sports_Club_Member": "Sports Club Member?", "Cultural_Club_Member": "Cultural Club Member?",
-        "Pre_Placement_Talks_Attended": "Pre-Placement Talks Attended (count)",
-        "Employment_Bond_Acceptable": "Employment Bond Acceptable?",
-        "Had_Named_Internship": "Completed a Named-Company Internship?",
-    }
-    BINARY_FIELDS = [
-        "Internship_PPO_Offered", "Is_First_Generation_Graduate", "Scholarship_Received",
-        "Extra_Curricular_Activities", "Leadership_Role_Held", "LinkedIn_Profile_Updated",
-        "Travel_Ready", "Relocation_Ready", "Prefers_WFH", "Overtime_Ready",
-        "Tech_Club_Member", "Sports_Club_Member", "Cultural_Club_Member",
-        "Employment_Bond_Acceptable", "Had_Named_Internship",
-    ]
-    INT_FIELDS = {
-        "History_of_Backlogs", "Active_Backlogs", "Internships_Completed",
-        "Internship_Duration_Months", "Academic_Projects_Count", "Certifications_Count",
-        "Hackathon_Participations", "Mock_Interviews_Attended", "Communication_Rating",
-        "Pre_Placement_Talks_Attended", "Age",
-    }
-    OPTIONAL_SCORE_FIELDS = {
-        "Aptitude_Test_Score", "Logical_Reasoning_Score", "Quantitative_Ability_Score",
-        "Domain_Knowledge_Score", "English_Proficiency_Score", "Psychometric_Fit_Score",
-        "Coding_Platform_Rating", "Technical_Skills_Score", "Soft_Skills_Score",
-        "Resume_Score", "Communication_Rating",
-    }
-
-    def card_header(title, caption):
-        st.markdown(f'<div class="gt-card-title">{title}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="gt-card-caption">{caption}</div>', unsafe_allow_html=True)
-
-    def score_input(container, feat):
-        lo, hi = numeric_ranges[feat]
-        default = round((lo + hi) / 2, 1)
-        is_int = feat in INT_FIELDS
-        unknown = container.checkbox("Not attempted / no score yet", key=f"{feat}__na")
-        if is_int:
-            val = container.slider(FRIENDLY_LABELS[feat], int(lo), int(hi), int(default), disabled=unknown, key=feat)
-        else:
-            val = container.slider(FRIENDLY_LABELS[feat], float(lo), float(hi), float(default), disabled=unknown, key=feat)
-        return np.nan if unknown else val
-
-    def _sync_all_scores_to_master():
-        master_val = st.session_state.get("pre_interview_mode", False)
-        for feat in OPTIONAL_SCORE_FIELDS:
-            st.session_state[f"{feat}__na"] = master_val
-
-    user_input = {}
-
-    with st.container(border=True):
-        card_header("Student Profile", "Personalize the result with a name (optional)")
-        student_name = st.text_input("Enter name", placeholder="e.g. Pallavi Tiwari", label_visibility="visible")
-
-    st.checkbox(
-        "🎓 Pre-interview / fresher profile — this student hasn't taken any tests or interviews yet",
-        key="pre_interview_mode", on_change=_sync_all_scores_to_master,
-        help="One click marks every test/skill score below as 'not attempted' instead of ticking "
-             "each one individually. You can still untick a specific field afterwards if that one "
-             "score is actually known.",
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(
+        r=student_vals + [student_vals[0]],
+        theta=categories + [categories[0]],
+        fill="toself", name="This Student", line_color="#1f77b4",
+    ))
+    fig.add_trace(go.Scatterpolar(
+        r=bench_vals + [bench_vals[0]],
+        theta=categories + [categories[0]],
+        fill="toself", name="Typical Placed Student", line_color="#ff7f0e",
+        opacity=0.5,
+    ))
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+        showlegend=True, height=420, margin=dict(l=40, r=40, t=30, b=30),
     )
+    return fig
 
-    with st.form("placement_form"):
-        with st.container(border=True):
-            card_header("Academic Details", "Board and degree performance")
-            c1, c2, c3 = st.columns(3)
-            academic_fields = ["Age", "CGPA", "10th_Percentage", "12th_Percentage", "Study_Hours_Per_Day", "Attendance_Percentage"]
-            for i, feat in enumerate(academic_fields):
-                col = [c1, c2, c3][i % 3]
-                lo, hi = numeric_ranges[feat]
-                default = round((lo + hi) / 2, 1)
-                with col:
-                    if feat in INT_FIELDS:
-                        user_input[feat] = st.number_input(FRIENDLY_LABELS[feat], min_value=int(lo), max_value=int(hi) + 5, value=int(default), step=1)
-                    else:
-                        user_input[feat] = st.slider(FRIENDLY_LABELS[feat], float(lo), float(hi), float(default))
 
-        with st.container(border=True):
-            card_header("Backlogs & Projects", "Academic continuity signals")
-            c1, c2, c3 = st.columns(3)
-            for i, feat in enumerate(["History_of_Backlogs", "Active_Backlogs", "Academic_Projects_Count"]):
-                col = [c1, c2, c3][i % 3]
-                lo, hi = numeric_ranges[feat]
-                with col:
-                    user_input[feat] = st.number_input(FRIENDLY_LABELS[feat], min_value=int(lo), max_value=int(hi) + 3, value=int(lo), step=1)
+def build_benchmark_bar(student_scores: dict, benchmark_scores: dict, title: str) -> go.Figure:
+    categories = list(student_scores.keys())
+    fig = go.Figure()
+    fig.add_trace(go.Bar(name="This Student", x=categories, y=list(student_scores.values()), marker_color="#1f77b4"))
+    fig.add_trace(go.Bar(name="Typical Placed Student", x=categories, y=[benchmark_scores[c] for c in categories], marker_color="#ff7f0e"))
+    fig.update_layout(barmode="group", title=title, height=350, margin=dict(l=20, r=20, t=50, b=20), yaxis_range=[0, 100])
+    return fig
 
-        with st.container(border=True):
-            card_header("Test & Skill Scores", "Aptitude, communication and technical ability")
-            st.caption(
-                "Use the **Pre-interview / fresher** switch above to mark all scores as not "
-                "attempted in one click, or tick an individual field's checkbox if only that "
-                "one test hasn't happened yet."
-            )
-            c1, c2, c3 = st.columns(3)
-            skill_fields = ["Technical_Skills_Score", "Soft_Skills_Score", "Aptitude_Test_Score",
-                             "Logical_Reasoning_Score", "Quantitative_Ability_Score", "Domain_Knowledge_Score",
-                             "English_Proficiency_Score", "Psychometric_Fit_Score", "Resume_Score"]
-            for i, feat in enumerate(skill_fields):
-                col = [c1, c2, c3][i % 3]
-                with col:
-                    user_input[feat] = score_input(col, feat)
-            c1, c2 = st.columns(2)
-            with c1:
-                user_input["Communication_Rating"] = score_input(c1, "Communication_Rating")
-            with c2:
-                user_input["Coding_Platform_Rating"] = score_input(c2, "Coding_Platform_Rating")
 
-        with st.container(border=True):
-            card_header("Experience & Activity", "Internships, certifications and prep")
-            c1, c2, c3 = st.columns(3)
-            prep_fields = ["Internships_Completed", "Internship_Duration_Months", "Mock_Interviews_Attended",
-                           "Certifications_Count", "Hackathon_Participations", "Pre_Placement_Talks_Attended"]
-            for i, feat in enumerate(prep_fields):
-                col = [c1, c2, c3][i % 3]
-                lo, hi = numeric_ranges[feat]
-                with col:
-                    user_input[feat] = st.number_input(FRIENDLY_LABELS[feat], min_value=int(lo), max_value=int(hi) + 3, value=int(lo), step=1)
+def get_feature_importance(pipeline_model, columns) -> pd.Series | None:
+    """Best-effort extraction of feature importance/coefficients from a fitted pipeline."""
+    try:
+        clf = pipeline_model
+        if hasattr(pipeline_model, "named_steps"):
+            clf = list(pipeline_model.named_steps.values())[-1]
 
-        with st.container(border=True):
-            card_header("Background", "Demographic and career context")
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                user_input["Gender"] = st.selectbox("Gender", categorical_options["Gender"])
-                user_input["Department"] = st.selectbox("Department", categorical_options["Department"])
-                user_input["Board_12th"] = st.selectbox("12th Board", categorical_options["Board_12th"])
-            with c2:
-                user_input["Home_State"] = st.selectbox("Home State", categorical_options["Home_State"])
-                user_input["School_Medium"] = st.selectbox("School Medium", categorical_options["School_Medium"])
-                user_input["Father_Occupation"] = st.selectbox("Father's Occupation", categorical_options["Father_Occupation"])
-            with c3:
-                user_input["Family_Income_Band"] = st.selectbox("Family Income Band", categorical_options["Family_Income_Band"])
-                user_input["Accommodation_Type"] = st.selectbox("Accommodation Type", categorical_options["Accommodation_Type"])
-                user_input["Career_Preference"] = st.selectbox("Career Preference", categorical_options["Career_Preference"])
+        feature_names = columns
+        if hasattr(pipeline_model, "named_steps"):
+            for step in pipeline_model.named_steps.values():
+                if hasattr(step, "get_feature_names_out"):
+                    try:
+                        feature_names = step.get_feature_names_out()
+                    except Exception:
+                        pass
 
-        with st.container(border=True):
-            card_header("Readiness Checklist", "Work-readiness and involvement")
-            c1, c2, c3 = st.columns(3)
-            for i, feat in enumerate(BINARY_FIELDS):
-                col = [c1, c2, c3][i % 3]
-                with col:
-                    choice = st.radio(FRIENDLY_LABELS[feat], ["Yes", "No"], horizontal=True, key=feat, index=1)
-                    user_input[feat] = 1 if choice == "Yes" else 0
+        if hasattr(clf, "coef_"):
+            values = np.abs(clf.coef_).ravel()
+        elif hasattr(clf, "feature_importances_"):
+            values = clf.feature_importances_
+        else:
+            return None
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        submitted = st.form_submit_button("🔮  Predict Placement", use_container_width=True)
+        if len(values) != len(feature_names):
+            return None
 
-    if submitted:
-        row = pd.DataFrame([user_input])
-        row["Overall_Academic_Score"] = row[["10th_Percentage", "12th_Percentage"]].mean(axis=1) * 0.5 + \
-                                         (row["CGPA"] / 10 * 100) * 0.5
-        row["Readiness_Index"] = row[["Technical_Skills_Score", "Soft_Skills_Score", "Aptitude_Test_Score",
-                                       "Resume_Score", "Communication_Rating"]].mean(axis=1)
-        proba = float(model.predict_proba(row)[0, 1])
-        pred = int(model.predict(row)[0])
-        st.session_state.result = {"name": student_name.strip() or "This student", "proba": proba, "pred": pred}
+        return pd.Series(values, index=feature_names).sort_values(ascending=False).head(10)
+    except Exception:
+        return None
 
-    # ---------------------------------------------------------------------
-    # Result panel
-    # ---------------------------------------------------------------------
-    result = st.session_state.result
-    if result:
-        st.markdown("<br>", unsafe_allow_html=True)
-        placed = result["pred"] == 1
-        proba_pct = result["proba"] * 100
 
-        col_left, col_right = st.columns([1.1, 1])
+# --------------------------------------------------------------------------
+# PDF report generation (static matplotlib versions of the same charts)
+# --------------------------------------------------------------------------
 
-        with col_left:
-            pill_class = "gt-pill-win" if placed else "gt-pill-risk"
-            pill_text = "Likely Placed" if placed else "At Risk"
-            headline = (
-                f"Congratulations, {result['name']}! Based on the academic profile and our "
-                f"model, this student has a high probability of getting placed."
-                if placed else
-                f"Based on the academic profile and our model, {result['name']} currently shows "
-                f"a lower placement probability — early support can change that."
-            )
-            st.markdown(f"""
-            <div class="gt-result-card">
-              <div class="gt-eyebrow-small">Placement Result</div>
-              <div class="gt-result-name">{result['name']}</div>
-              <span class="gt-pill {pill_class}">{pill_text}</span>
-              <div class="gt-result-body">{headline}</div>
-            </div>
-            """, unsafe_allow_html=True)
+def fig_to_png_bytes(fig) -> bytes:
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    buf.seek(0)
+    return buf.read()
 
-            st.markdown("<br>", unsafe_allow_html=True)
 
-            tips = (
-                "Keep building interview readiness, tailor the resume to target roles, and "
-                "continue showcasing projects and certifications."
-                if placed else
-                "Prioritise mock interviews, close any active backlogs, and strengthen resume "
-                "and communication scores with focused mentoring."
-            )
-            st.markdown(f"""
-            <div class="gt-result-card">
-              <div class="gt-eyebrow-small">Personalized Next Steps</div>
-              <div class="gt-result-body">{tips}</div>
-            </div>
-            """, unsafe_allow_html=True)
+def make_mpl_gauge(probability: float) -> bytes:
+    fig, ax = plt.subplots(figsize=(4, 2.5), subplot_kw={"projection": "polar"})
+    ax.set_theta_offset(np.pi)
+    ax.set_theta_direction(-1)
+    ax.set_thetamin(0)
+    ax.set_thetamax(180)
+    ax.bar(x=np.pi / 2, height=1, width=np.pi, color="#eee", bottom=0)
+    ax.bar(x=(1 - probability) * np.pi / 2 + probability * (np.pi / 2), height=1,
+           width=probability * np.pi, color="#1f77b4", bottom=0, align="edge")
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+    ax.grid(False)
+    ax.spines["polar"].set_visible(False)
+    ax.set_title(f"Placement Probability: {probability * 100:.1f}%", pad=20)
+    return fig_to_png_bytes(fig)
 
-        with col_right:
-            gauge_color = "var(--gt-gold)" if placed else "var(--gt-red)"
-            st.markdown(f"""
-            <div class="gt-result-card">
-              <div class="gt-eyebrow-small">Model Confidence</div>
-              <div class="gt-card-caption" style="margin-bottom:10px;">Probability from the current prediction</div>
-              <div class="gt-gauge-wrap">
-                <div class="gt-gauge" style="--pct:{proba_pct}; --gauge-color:{gauge_color};">
-                  <div class="gt-gauge-inner">
-                    <div class="gt-gauge-value">{proba_pct:.1f}%</div>
-                    <div class="gt-gauge-label">Placement Chance</div>
-                  </div>
-                </div>
-                <div class="gt-track" style="width:100%;">
-                  <div class="gt-track-fill" style="width:{proba_pct:.1f}%;"></div>
-                </div>
-                <div class="gt-stat-row" style="width:100%;">
-                  <div><div class="gt-stat-label">Probability</div><div class="gt-stat-value">{proba_pct:.1f}%</div></div>
-                  <div style="text-align:right;"><div class="gt-stat-label">Confidence</div><div class="gt-stat-value">{proba_pct:.1f}%</div></div>
-                </div>
-              </div>
-            </div>
-            """, unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🔁 Predict Another Student"):
-            st.session_state.result = None
-            st.rerun()
+def make_mpl_radar(student_scores: dict, benchmark_scores: dict) -> bytes:
+    categories = list(student_scores.keys())
+    n = len(categories)
+    angles = np.linspace(0, 2 * np.pi, n, endpoint=False).tolist()
+    angles += angles[:1]
 
-        if placed:
-            st.balloons()
+    student_vals = list(student_scores.values()) + [list(student_scores.values())[0]]
+    bench_vals = [benchmark_scores[c] for c in categories] + [benchmark_scores[categories[0]]]
 
-            def confetti_burst():
-                components.html("""
-                <canvas id="gt-confetti" style="position:fixed; top:0; left:0; width:100%; height:100%;
-                    pointer-events:none; z-index:9999;"></canvas>
-                <script>
-                const canvas = document.getElementById('gt-confetti');
-                const ctx = canvas.getContext('2d');
-                function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-                resize(); window.addEventListener('resize', resize);
-                const colors = ['#9B7BD4', '#4F2D7F', '#C9A227', '#E9CE6D', '#FFFFFF'];
-                const N = 160;
-                const pieces = Array.from({length: N}, () => ({
-                    x: Math.random() * canvas.width,
-                    y: -20 - Math.random() * canvas.height * 0.5,
-                    w: 6 + Math.random() * 6, h: 8 + Math.random() * 10,
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    speedY: 2 + Math.random() * 3, speedX: -2 + Math.random() * 4,
-                    rot: Math.random() * 360, rotSpeed: -8 + Math.random() * 16,
-                }));
-                let frame = 0; const maxFrames = 220;
-                function draw(){
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    pieces.forEach(p => {
-                        p.x += p.speedX; p.y += p.speedY; p.rot += p.rotSpeed;
-                        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot * Math.PI / 180);
-                        ctx.fillStyle = p.color; ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-                        ctx.restore();
-                    });
-                    frame++;
-                    if (frame < maxFrames){ requestAnimationFrame(draw); }
-                    else { ctx.clearRect(0, 0, canvas.width, canvas.height); }
-                }
-                draw();
-                </script>
-                """, height=0, width=0)
+    fig, ax = plt.subplots(figsize=(5, 5), subplot_kw={"projection": "polar"})
+    ax.plot(angles, student_vals, color="#1f77b4", label="This Student")
+    ax.fill(angles, student_vals, color="#1f77b4", alpha=0.25)
+    ax.plot(angles, bench_vals, color="#ff7f0e", label="Typical Placed Student")
+    ax.fill(angles, bench_vals, color="#ff7f0e", alpha=0.15)
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(categories, fontsize=8)
+    ax.set_ylim(0, 100)
+    ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1.1), fontsize=8)
+    return fig_to_png_bytes(fig)
 
-            confetti_burst()
 
-        st.caption(
-            "This is a data-driven estimate, not a guarantee. Use it to prioritise "
-            "mock interviews, skill-building and mentoring for at-risk students."
+def make_mpl_bar(student_scores: dict, benchmark_scores: dict, title: str) -> bytes:
+    categories = list(student_scores.keys())
+    x = np.arange(len(categories))
+    width = 0.35
+
+    fig, ax = plt.subplots(figsize=(6, 3))
+    ax.bar(x - width / 2, list(student_scores.values()), width, label="This Student", color="#1f77b4")
+    ax.bar(x + width / 2, [benchmark_scores[c] for c in categories], width, label="Typical Placed Student", color="#ff7f0e")
+    ax.set_xticks(x)
+    ax.set_xticklabels(categories, rotation=20, ha="right", fontsize=8)
+    ax.set_ylim(0, 100)
+    ax.set_title(title)
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    return fig_to_png_bytes(fig)
+
+
+def build_pdf_report(student_name_note, prediction, probability, academic_scores,
+                      test_soft_scores, drivers_text) -> bytes:
+    pdf = FPDF()
+    pdf.add_page()
+
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.cell(0, 12, "Student Placement Report", ln=True, align="C")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 8, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True, align="C")
+    pdf.ln(4)
+
+    pdf.set_font("Helvetica", "B", 14)
+    result_text = "Predicted: PLACED" if prediction == 1 else "Predicted: NOT PLACED"
+    pdf.cell(0, 10, f"{result_text}   |   Probability: {probability * 100:.1f}%", ln=True)
+    pdf.ln(2)
+
+    gauge_png = make_mpl_gauge(probability)
+    gauge_path = "/home/claude/_gauge.png"
+    with open(gauge_path, "wb") as f:
+        f.write(gauge_png)
+    pdf.image(gauge_path, x=55, w=100)
+    pdf.ln(4)
+
+    radar_png = make_mpl_radar(test_soft_scores, {**BENCHMARK})
+    radar_path = "/home/claude/_radar.png"
+    with open(radar_path, "wb") as f:
+        f.write(radar_png)
+    pdf.image(radar_path, x=45, w=120)
+    pdf.ln(4)
+
+    academic_bar_png = make_mpl_bar(academic_scores, BENCHMARK, "Academic Scores vs Typical Placed Student")
+    academic_path = "/home/claude/_academic.png"
+    with open(academic_path, "wb") as f:
+        f.write(academic_bar_png)
+    pdf.image(academic_path, x=25, w=160)
+    pdf.ln(4)
+
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.cell(0, 10, "What Drove This Prediction", ln=True)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.multi_cell(0, 6, drivers_text)
+
+    return bytes(pdf.output())
+
+
+# --------------------------------------------------------------------------
+# Prediction + report rendering
+# --------------------------------------------------------------------------
+
+if submitted:
+    row = pd.DataFrame([{
+        "Gender": gender,
+        "Age": age,
+        "State": state,
+        "City": city,
+        "College_Type": college_type,
+        "Degree_Stream": degree_stream,
+        "10th_Percentage": ssc,
+        "12th_Percentage": hsc,
+        "Graduation_Percentage": grad,
+        "CGPA": cgpa,
+        "Backlogs": backlogs,
+        "Attendance": attendance,
+        "Internship": internship,
+        "Internship_Months": internship_months,
+        "Projects": projects,
+        "Certifications": certifications,
+        "Aptitude_Score": aptitude,
+        "Coding_Score": coding,
+        "Communication_Score": communication,
+        "Technical_Score": technical,
+        "Mock_Interview_Score": mock_interview,
+        "Resume_Score": resume,
+    }])
+
+    # Engineered features — must match training-time feature engineering
+    row["Avg_Academic_Score"] = row[["10th_Percentage", "12th_Percentage", "Graduation_Percentage"]].mean(axis=1)
+    row["Avg_Test_Score"] = row[["Aptitude_Score", "Coding_Score", "Technical_Score"]].mean(axis=1)
+    row["Soft_Skill_Score"] = row[["Communication_Score", "Mock_Interview_Score", "Resume_Score"]].mean(axis=1)
+
+    prediction = model.predict(row)[0]
+    probability = model.predict_proba(row)[0][1]
+
+    st.divider()
+    if prediction == 1:
+        st.success("### ✅ Predicted: Placed")
+    else:
+        st.error("### ❌ Predicted: Not Placed")
+
+    gauge_col, metric_col = st.columns([2, 1])
+    with gauge_col:
+        st.plotly_chart(build_gauge(probability), use_container_width=True)
+    with metric_col:
+        st.metric("Placement Probability", f"{probability * 100:.1f}%")
+        st.metric("CGPA", f"{cgpa:.2f}")
+        st.metric("Backlogs", backlogs)
+
+    # Score groupings used across the report
+    academic_scores = {
+        "10th_Percentage": ssc, "12th_Percentage": hsc,
+        "Graduation_Percentage": grad, "CGPA": round(cgpa * 10, 1),
+    }
+    skill_scores = {
+        "Aptitude_Score": aptitude, "Coding_Score": coding, "Technical_Score": technical,
+        "Communication_Score": communication, "Mock_Interview_Score": mock_interview,
+        "Resume_Score": resume,
+    }
+    radar_benchmark = {**BENCHMARK, "CGPA": BENCHMARK["CGPA"] * 10}
+
+    st.subheader("📊 Score Breakdown")
+    tab1, tab2, tab3 = st.tabs(["Skill Radar", "Academic Comparison", "Skill Comparison"])
+    with tab1:
+        radar_scores = {**skill_scores, "10th_Percentage": ssc, "12th_Percentage": hsc,
+                         "Graduation_Percentage": grad, "CGPA": round(cgpa * 10, 1)}
+        radar_bench = {**BENCHMARK, "CGPA": BENCHMARK["CGPA"] * 10}
+        st.plotly_chart(build_radar(radar_scores, radar_bench), use_container_width=True)
+    with tab2:
+        st.plotly_chart(
+            build_benchmark_bar(academic_scores, radar_benchmark, "Academic Scores vs Typical Placed Student"),
+            use_container_width=True,
+        )
+    with tab3:
+        st.plotly_chart(
+            build_benchmark_bar(skill_scores, BENCHMARK, "Test & Soft Skills vs Typical Placed Student"),
+            use_container_width=True,
         )
 
-st.markdown(
-    '<div class="gt-footer">Grant Thornton Bharat · Student Placement Prediction System · '
-    'Built for internal training &amp; academic demonstration</div>',
-    unsafe_allow_html=True,
+    st.subheader("🔑 Key Drivers")
+    importance = get_feature_importance(model, row.columns)
+    drivers_text = (
+        "This model weighs academic scores (CGPA, percentages), test/coding "
+        "performance, backlogs, and soft-skill scores most heavily. Higher "
+        "scores and fewer backlogs push the prediction toward Placed."
+    )
+    if importance is not None:
+        fig, ax = plt.subplots(figsize=(6, 3.5))
+        importance.sort_values().plot(kind="barh", ax=ax, color="#1f77b4")
+        ax.set_title("Top Features Influencing This Model")
+        fig.tight_layout()
+        st.pyplot(fig)
+    else:
+        with st.expander("What drove this prediction?"):
+            st.write(drivers_text)
+
+    st.divider()
+    st.subheader("📄 Download Full Report")
+    pdf_bytes = build_pdf_report(
+        student_name_note=None,
+        prediction=prediction,
+        probability=probability,
+        academic_scores=academic_scores,
+        test_soft_scores=skill_scores,
+        drivers_text=drivers_text,
+    )
+    st.download_button(
+        label="⬇️ Download PDF Report",
+        data=pdf_bytes,
+        file_name=f"placement_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+        mime="application/pdf",
+        use_container_width=True,
+    )
+
+st.divider()
+st.caption(
+    "Model: Logistic Regression (tuned via GridSearchCV) trained on 10,000 "
+    "student records. See the accompanying Jupyter notebook for full EDA, "
+    "model comparison, and evaluation metrics."
 )
