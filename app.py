@@ -34,61 +34,92 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
 
 :root{
-    --gt-purple-deep:   #2E1854;
+    --gt-void:          #0C0716;
+    --gt-purple-deep:   #2A1650;
     --gt-purple:        #4F2D7F;
-    --gt-purple-light:  #9B7BD4;
-    --gt-purple-mist:   #241A38;
+    --gt-purple-light:  #AA8CE0;
     --gt-gold:          #C9A227;
-    --gt-gold-light:    #E9CE6D;
+    --gt-gold-light:    #F0D375;
+    --gt-gold-dim:      rgba(201,162,39,0.16);
     --gt-red:           #E24C63;
-    --gt-ink:           #F3EFFB;
-    --gt-muted:         #A79CC0;
-    --gt-card-bg:       #17102A;
+    --gt-ink:           #F5F1FC;
+    --gt-muted:         #9C8FBD;
+    --gt-card-bg:       rgba(30, 20, 51, 0.55);
     --gt-card-bg-2:     #1E1633;
+    --gt-hairline:      rgba(201,162,39,0.22);
 }
 
-html, body, [class*="css"]  { font-family: 'Inter', sans-serif; }
-h1, h2, h3, .gt-display { font-family: 'Poppins', sans-serif; }
+html, body, [class*="css"]  { font-family: 'Manrope', sans-serif; }
+h1, h2, h3, .gt-display { font-family: 'Fraunces', serif; }
 
-.stApp{ background: radial-gradient(ellipse at top, #201335 0%, #0F0A1C 55%, #0B0715 100%); }
+.stApp{
+    background:
+        radial-gradient(1200px 700px at 85% -8%, rgba(201,162,39,0.10) 0%, transparent 55%),
+        radial-gradient(900px 600px at -10% 15%, rgba(155,123,212,0.14) 0%, transparent 50%),
+        radial-gradient(ellipse at top, #201335 0%, #0F0A1C 55%, var(--gt-void) 100%);
+    background-attachment: fixed;
+}
+.stApp::before{
+    content:"";
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image: radial-gradient(rgba(240,211,117,0.07) 1px, transparent 1px);
+    background-size: 26px 26px;
+    mask-image: radial-gradient(ellipse 900px 700px at 70% 0%, black 0%, transparent 70%);
+}
 #MainMenu, footer, header[data-testid="stHeader"] { visibility: hidden; height: 0; }
 .block-container { padding-top: 1.2rem; max-width: 900px; }
 p, span, label, .stMarkdown, div[data-testid="stCaptionContainer"] { color: var(--gt-ink); }
 .stCaption, [data-testid="stCaptionContainer"] p { color: var(--gt-muted) !important; }
 
+/* ---------- Shared: mono eyebrow label ---------- */
+.gt-eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:0.72rem;
+    letter-spacing:0.16em; text-transform:uppercase; color: var(--gt-gold-light);
+    display:flex; align-items:center; gap:8px;
+}
+.gt-eyebrow::before{
+    content:""; width:7px; height:7px; border-radius:50%;
+    border:1.5px solid var(--gt-gold-light); flex-shrink:0;
+}
+
 /* ---------- Banner ---------- */
 .gt-banner{
     background: linear-gradient(120deg, var(--gt-purple-deep) 0%, var(--gt-purple) 100%);
     border-radius: 16px;
+    border-bottom: 2px solid var(--gt-gold);
     padding: 16px 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     box-shadow: 0 10px 30px rgba(0,0,0,0.35);
     margin-bottom: 14px;
+    position: relative;
+    z-index: 1;
 }
 .gt-banner-left{ display:flex; align-items:center; gap:12px; }
 .gt-wordmark{ display:flex; flex-direction:column; line-height:1.05; }
-.gt-wordmark .gt-name{ color:#FFFFFF; font-family:'Poppins',sans-serif; font-weight:700; font-size:1rem; letter-spacing:0.05em; text-transform:uppercase; }
-.gt-wordmark .gt-sub{ color: var(--gt-gold-light); font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; margin-top:2px; }
+.gt-wordmark .gt-name{ color:#FFFFFF; font-family:'Fraunces',serif; font-weight:600; font-size:1.05rem; letter-spacing:0.01em; }
+.gt-wordmark .gt-sub{ color: var(--gt-gold-light); font-family:'IBM Plex Mono',monospace; font-size:0.66rem; letter-spacing:0.14em; text-transform:uppercase; margin-top:3px; }
 
-/* ---------- Nav buttons ---------- */
+/* ---------- Nav rail ---------- */
 div[data-testid="column"] div.stButton > button{
     border-radius: 999px !important;
-    font-family:'Poppins',sans-serif; font-weight:600; font-size:0.85rem;
-    padding: 0.5rem 0.4rem;
+    font-family:'Manrope',sans-serif; font-weight:700; font-size:0.83rem;
+    padding: 0.55rem 0.4rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
+div[data-testid="column"] div.stButton > button:hover{ transform: translateY(-1px); }
 div.stButton > button[kind="secondary"]{
-    background: var(--gt-card-bg-2);
-    color: var(--gt-ink);
-    border: 1px solid rgba(155,123,212,0.25);
+    background: rgba(255,255,255,0.03);
+    color: var(--gt-muted);
+    border: 1px solid rgba(155,123,212,0.22);
 }
 div.stButton > button[kind="primary"]{
     background: linear-gradient(120deg, var(--gt-purple) 0%, var(--gt-purple-light) 100%);
-    color: #fff; border: none;
+    color: #fff; border: none; border-bottom: 2px solid var(--gt-gold);
     box-shadow: 0 6px 18px rgba(79,45,127,0.5);
 }
 
@@ -96,23 +127,49 @@ div.stButton > button[kind="primary"]{
 .gt-hero{
     background: linear-gradient(135deg, var(--gt-purple-deep) 0%, #1B1030 100%);
     border: 1px solid rgba(155,123,212,0.2);
-    border-radius: 20px;
-    padding: 40px 36px;
+    border-radius: 22px;
+    padding: 44px 40px;
     margin-top: 10px;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
 }
-.gt-hero .gt-eyebrow-text{ color: var(--gt-gold-light); font-weight:700; font-size:0.9rem; margin-bottom:10px; }
-.gt-hero h1{ font-family:'Poppins',sans-serif; font-weight:800; font-size:2rem; color:#fff; margin: 0 0 12px 0; line-height:1.2; }
-.gt-hero p{ color: var(--gt-muted); font-size:1rem; max-width: 520px; }
+.gt-hero-watermark{
+    position: absolute; right: -60px; top: -60px; width: 320px; height: 320px;
+    opacity: 0.16; pointer-events: none;
+}
+.gt-hero h1{
+    font-family:'Fraunces',serif; font-weight:600; font-size:2.3rem; color:#fff;
+    margin: 14px 0 14px 0; line-height:1.18; max-width: 560px; position: relative;
+}
+.gt-hero h1 em{ font-style: italic; color: var(--gt-gold-light); font-weight:500; }
+.gt-hero p{ color: var(--gt-muted); font-size:1.02rem; max-width: 480px; position: relative; }
+.gt-proof-strip{ display:flex; gap:10px; flex-wrap:wrap; margin-top:22px; position:relative; }
+.gt-proof-chip{
+    font-family:'IBM Plex Mono',monospace; font-size:0.76rem; color: var(--gt-ink);
+    background: rgba(255,255,255,0.05); border: 1px solid var(--gt-hairline);
+    border-radius: 10px; padding: 7px 12px;
+}
+.gt-proof-chip b{ color: var(--gt-gold-light); font-weight:700; }
 
 /* ---------- Section eyebrow / card ---------- */
-.gt-card-title{ font-family:'Poppins',sans-serif; font-weight:700; color: var(--gt-gold-light); font-size:1.02rem; margin-bottom:2px; }
-.gt-card-caption{ color: var(--gt-muted); font-size:0.85rem; margin-bottom: 14px; }
+.gt-card-title{
+    font-family:'Fraunces',serif; font-weight:600; color:#fff; font-size:1.12rem;
+    margin-bottom:3px; display:flex; align-items:center; gap:9px;
+}
+.gt-card-title::before{
+    content:""; width:11px; height:11px; flex-shrink:0; border-radius:50%;
+    border: 2px solid var(--gt-gold); box-shadow: 3px 0 0 -1.5px var(--gt-purple-light);
+}
+.gt-card-caption{ color: var(--gt-muted); font-size:0.85rem; margin-bottom: 14px; margin-left: 20px; }
 
 div[data-testid="stVerticalBlockBorderWrapper"]{
     background: var(--gt-card-bg) !important;
+    backdrop-filter: blur(14px);
     border: 1px solid rgba(155,123,212,0.18) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    border-top: 2px solid var(--gt-hairline) !important;
+    border-radius: 18px !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.28);
 }
 
 /* ---------- Inputs on dark surface ---------- */
@@ -142,10 +199,12 @@ div[data-testid="stRadio"] label{
 div[data-testid="stFormSubmitButton"] > button{
     background: linear-gradient(120deg, var(--gt-purple) 0%, var(--gt-gold) 160%);
     color: #fff; border: none; border-radius: 12px;
-    font-family:'Poppins',sans-serif; font-weight:700; letter-spacing:0.02em;
+    font-family:'Manrope',sans-serif; font-weight:800; letter-spacing:0.01em;
     padding: 0.85rem 1.2rem; font-size: 1rem;
     box-shadow: 0 8px 22px rgba(79,45,127,0.45);
+    transition: transform 0.15s ease;
 }
+div[data-testid="stFormSubmitButton"] > button:hover{ transform: translateY(-1px); }
 
 /* ---------- Expander ---------- */
 div[data-testid="stExpander"]{
@@ -158,12 +217,13 @@ div[data-testid="stExpander"]{
 .gt-result-card{
     background: var(--gt-card-bg);
     border: 1px solid rgba(155,123,212,0.2);
+    border-top: 2px solid var(--gt-hairline);
     border-radius: 18px;
     padding: 22px 24px;
     height: 100%;
 }
-.gt-eyebrow-small{ color: var(--gt-gold-light); font-weight:700; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px; }
-.gt-result-name{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.5rem; color:#fff; margin: 2px 0 10px 0; }
+.gt-eyebrow-small{ font-family:'IBM Plex Mono',monospace; color: var(--gt-gold-light); font-weight:600; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px; }
+.gt-result-name{ font-family:'Fraunces',serif; font-weight:600; font-size:1.55rem; color:#fff; margin: 2px 0 10px 0; }
 .gt-pill{ display:inline-block; border-radius:999px; padding: 5px 16px; font-weight:700; font-size:0.85rem; margin-bottom: 12px; }
 .gt-pill-win{ background: rgba(201,162,39,0.18); color: var(--gt-gold-light); border: 1px solid rgba(201,162,39,0.4); }
 .gt-pill-risk{ background: rgba(226,76,99,0.15); color: var(--gt-red); border: 1px solid rgba(226,76,99,0.4); }
@@ -179,11 +239,11 @@ div[data-testid="stExpander"]{
 }
 .gt-gauge-inner{
     width:130px; height:130px; border-radius:50%;
-    background: var(--gt-card-bg);
+    background: #180F2C;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
 }
-.gt-gauge-value{ font-family:'Poppins',sans-serif; font-size:1.55rem; font-weight:800; color:#fff; }
-.gt-gauge-label{ font-size:0.62rem; letter-spacing:0.1em; color: var(--gt-muted); margin-top:4px; text-transform:uppercase; }
+.gt-gauge-value{ font-family:'Fraunces',serif; font-size:1.6rem; font-weight:600; color:#fff; }
+.gt-gauge-label{ font-family:'IBM Plex Mono',monospace; font-size:0.6rem; letter-spacing:0.1em; color: var(--gt-muted); margin-top:4px; text-transform:uppercase; }
 
 .gt-track{
     width:100%; height:8px; border-radius:999px; margin: 14px 0 10px 0;
@@ -193,25 +253,28 @@ div[data-testid="stExpander"]{
 
 .gt-stat-row{ display:flex; justify-content:space-between; margin-top: 6px; }
 .gt-stat-label{ color: var(--gt-muted); font-size:0.8rem; }
-.gt-stat-value{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.15rem; color: var(--gt-gold-light); }
+.gt-stat-value{ font-family:'Fraunces',serif; font-weight:600; font-size:1.2rem; color: var(--gt-gold-light); }
 
-.gt-footer{ text-align:center; color: var(--gt-muted); font-size:0.78rem; margin-top: 30px; padding-bottom: 10px; }
+.gt-footer{ text-align:center; color: var(--gt-muted); font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.02em; margin-top: 34px; padding: 18px 0 10px 0; border-top: 1px solid rgba(155,123,212,0.14); }
 
 /* ---------- Metric cards (Model Performance) ---------- */
 .gt-metric-card{
     background: var(--gt-card-bg);
     border: 1px solid rgba(155,123,212,0.2);
+    border-top: 2px solid var(--gt-hairline);
     border-radius: 16px;
-    padding: 18px 14px;
+    padding: 20px 14px;
     text-align: center;
+    transition: transform 0.15s ease;
 }
-.gt-metric-value{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.7rem; color: var(--gt-gold-light); }
-.gt-metric-label{ color: var(--gt-muted); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.06em; margin-top:4px; }
+.gt-metric-card:hover{ transform: translateY(-2px); }
+.gt-metric-value{ font-family:'Fraunces',serif; font-weight:600; font-size:1.85rem; color: var(--gt-gold-light); }
+.gt-metric-label{ font-family:'IBM Plex Mono',monospace; color: var(--gt-muted); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; margin-top:6px; }
 
 /* ---------- File uploader ---------- */
 div[data-testid="stFileUploaderDropzone"]{
     background: var(--gt-card-bg-2) !important;
-    border: 1.5px dashed rgba(155,123,212,0.4) !important;
+    border: 1.5px dashed rgba(201,162,39,0.4) !important;
     border-radius: 14px !important;
 }
 section[data-testid="stFileUploaderDropzoneInstructions"] span,
@@ -225,7 +288,7 @@ div[data-testid="stDataFrame"]{
 }
 
 /* ---------- Tabs ---------- */
-button[data-testid="stTab"]{ color: var(--gt-muted); font-family:'Poppins',sans-serif; font-weight:600; }
+button[data-testid="stTab"]{ color: var(--gt-muted); font-family:'Manrope',sans-serif; font-weight:700; }
 button[data-testid="stTab"][aria-selected="true"]{ color: var(--gt-gold-light) !important; }
 div[data-baseweb="tab-highlight"]{ background-color: var(--gt-gold) !important; }
 div[data-baseweb="tab-border"]{ background-color: rgba(155,123,212,0.2) !important; }
@@ -243,6 +306,14 @@ section[data-testid="stSidebar"]{
 }
 section[data-testid="stSidebar"] hr{ border-color: rgba(155,123,212,0.2); }
 section[data-testid="stSidebar"] a{ color: var(--gt-gold-light) !important; }
+
+/* ---------- Focus visibility (accessibility) ---------- */
+button:focus-visible, input:focus-visible, a:focus-visible{
+    outline: 2px solid var(--gt-gold-light) !important; outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce){
+    * { transition: none !important; }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -250,9 +321,9 @@ section[data-testid="stSidebar"] a{ color: var(--gt-gold-light) !important; }
 # Matplotlib theme — matches the GT Bharat dashboard palette
 # ---------------------------------------------------------------------------
 GT_PURPLE = "#4F2D7F"
-GT_PURPLE_LIGHT = "#9B7BD4"
+GT_PURPLE_LIGHT = "#AA8CE0"
 GT_GOLD = "#C9A227"
-GT_GOLD_LIGHT = "#E9CE6D"
+GT_GOLD_LIGHT = "#F0D375"
 GT_RED = "#E24C63"
 GT_INK = "#241B36"
 GT_MUTED = "#8A7FA0"
@@ -266,19 +337,19 @@ plt.rcParams["font.family"] = "DejaVu Sans"
 st.markdown("""
 <div class="gt-banner">
   <div class="gt-banner-left">
-    <svg width="38" height="38" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+    <svg width="40" height="40" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="gtGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#E9CE6D"/>
-          <stop offset="100%" stop-color="#9B7BD4"/>
+          <stop offset="0%" stop-color="#F0D375"/>
+          <stop offset="100%" stop-color="#AA8CE0"/>
         </linearGradient>
       </defs>
-      <circle cx="100" cy="128" r="77" fill="none" stroke="url(#gtGrad)" stroke-width="30"/>
-      <circle cx="156" cy="128" r="77" fill="none" stroke="url(#gtGrad)" stroke-width="30" opacity="0.85"/>
+      <circle cx="100" cy="128" r="77" fill="none" stroke="url(#gtGrad)" stroke-width="26"/>
+      <circle cx="156" cy="128" r="77" fill="none" stroke="url(#gtGrad)" stroke-width="26" opacity="0.85"/>
     </svg>
     <div class="gt-wordmark">
       <span class="gt-name">Grant Thornton Bharat</span>
-      <span class="gt-sub">Student Placement Predictor</span>
+      <span class="gt-sub">Placement Readiness Console</span>
     </div>
   </div>
 </div>
@@ -583,12 +654,22 @@ with nav5:
 # HOME
 # ---------------------------------------------------------------------------
 if st.session_state.page == "home":
-    st.markdown("""
+    st.markdown(f"""
     <div class="gt-hero">
-      <div class="gt-eyebrow-text">Welcome!</div>
-      <h1>See the next step in every student's placement journey.</h1>
-      <p>Use a tuned placement model and a clear academic profile to understand
-      placement likelihood with confidence.</p>
+      <svg class="gt-hero-watermark" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="100" cy="128" r="77" fill="none" stroke="#F0D375" stroke-width="14"/>
+        <circle cx="156" cy="128" r="77" fill="none" stroke="#AA8CE0" stroke-width="14"/>
+      </svg>
+      <div class="gt-eyebrow">Placement Cell &middot; Decision Support</div>
+      <h1>See the next step in <em>every</em> student's placement journey.</h1>
+      <p>A tuned Random Forest model reads a student's academic record, skills and
+      experience, and returns a clear placement-readiness read — with the reasoning
+      behind it, not just a number.</p>
+      <div class="gt-proof-strip">
+        <div class="gt-proof-chip">Hold-out accuracy <b>{test_metrics['Accuracy']*100:.1f}%</b></div>
+        <div class="gt-proof-chip">ROC-AUC <b>{test_metrics['ROC-AUC']*100:.1f}%</b></div>
+        <div class="gt-proof-chip">Recall <b>{test_metrics['Recall']*100:.1f}%</b></div>
+      </div>
     </div>
     """, unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
