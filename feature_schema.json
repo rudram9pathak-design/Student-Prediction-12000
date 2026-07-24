@@ -55,8 +55,8 @@
     "Accommodation_Type",
     "Career_Preference"
   ],
-  "categorical_options": { ... },   // unchanged, already correct
-  "numeric_ranges": { ... },        // unchanged, already correct
+  "categorical_options": {},
+  "numeric_ranges": {},
   "top_features": [
     "Technical_Skills_Score",
     "Domain_Knowledge_Score",
