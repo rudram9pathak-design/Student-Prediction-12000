@@ -64,9 +64,7 @@ def nav_pills(current_page: str, on_navigate):
 
 
 def kpi_row(kpis: list):
-    """kpis: list of (value_str, label_str). Renders animated-counter KPI cards.
-    Numeric values (e.g. '98.5%', '12,482') count up on load via a tiny inline
-    script; non-numeric values render statically."""
+    """Render KPI cards with animated counters."""
     cols = st.columns(len(kpis))
     for i, (col, (value, label)) in enumerate(zip(cols, kpis)):
         with col:
@@ -79,31 +77,31 @@ def kpi_row(kpis: list):
 
 
 def animated_counters(values: list):
-    """Injects a small JS snippet that counts numeric KPI values up from 0.
-    values: list of (numeric_target, suffix, elem_id) e.g. (98.5, '%', 'aip-kpi-0')."""
+    """Inject JS snippet to animate KPI values."""
     js_items = ",".join(
-        f'{{id:"{eid}", target:{target}, suffix:"{suffix}"}}'
-        for target, suffix, eid in values
+        f'{{id:"{eid}", target:{float(target)}, suffix:"{suffix}"}}'
+        for target, suffix, eid in values if isinstance(target, (int, float))
     )
-    components.html(f"""
-    <script>
-    const items = [{js_items}];
-    items.forEach(item => {{
-        const el = window.parent.document.getElementById(item.id);
-        if (!el) return;
-        let start = 0;
-        const dur = 900;
-        const t0 = performance.now();
-        function step(t) {{
-            const p = Math.min((t - t0) / dur, 1);
-            const val = (item.target * p).toFixed(item.target % 1 === 0 ? 0 : 1);
-            el.innerText = val + item.suffix;
-            if (p < 1) requestAnimationFrame(step);
-        }}
-        requestAnimationFrame(step);
-    }});
-    </script>
-    """, height=0, width=0)
+    if js_items:
+        components.html(f"""
+        <script>
+        const items = [{js_items}];
+        items.forEach(item => {{
+            const el = window.parent.document.getElementById(item.id);
+            if (!el) return;
+            let start = 0;
+            const dur = 900;
+            const t0 = performance.now();
+            function step(t) {{
+                const p = Math.min((t - t0) / dur, 1);
+                const val = (item.target * p).toFixed(item.target % 1 === 0 ? 0 : 1);
+                el.innerText = val + item.suffix;
+                if (p < 1) requestAnimationFrame(step);
+            }}
+            requestAnimationFrame(step);
+        }});
+        </script>
+        """, height=0, width=0)
 
 
 def hero_section(test_metrics: dict, on_predict):
@@ -112,69 +110,4 @@ def hero_section(test_metrics: dict, on_predict):
       <div class="aip-eyebrow">Placement Cell &middot; Decision Support</div>
       <h1>See the next step in <em>every</em> student's placement journey.</h1>
       <p>A tuned Random Forest model reads a student's academic record, skills and
-      experience, and returns a clear placement-readiness read — with the reasoning
-      behind it, not just a number.</p>
-      <div class="aip-proof-strip">
-        <div class="aip-proof-chip">Hold-out accuracy<b>{test_metrics['Accuracy']*100:.1f}%</b></div>
-        <div class="aip-proof-chip">ROC-AUC<b>{test_metrics['ROC-AUC']*100:.1f}%</b></div>
-        <div class="aip-proof-chip">Recall<b>{test_metrics['Recall']*100:.1f}%</b></div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.button("🔮 Predict Placement", type="primary", on_click=on_predict, args=("predict",))
-
-
-def card_header(title, caption):
-    st.markdown(f'<div class="aip-card-title">{title}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="aip-card-caption">{caption}</div>', unsafe_allow_html=True)
-
-
-def risk_badge_html(proba_pct):
-    label, tier = risk_label(proba_pct)
-    return f'<span class="aip-badge2 aip-badge-{tier}">{label}</span>'
-
-
-def stepper(labels: list, active_index: int = None):
-    """Visual progress stepper shown above the prediction form's sections."""
-    chips = "".join(
-        f'<span class="aip-step"><b>{i+1}</b>{lab}</span>'
-        for i, lab in enumerate(labels)
-    )
-    st.markdown(f'<div class="aip-stepper">{chips}</div>', unsafe_allow_html=True)
-
-
-def reason_chips(reasons: list):
-    chips = "".join(
-        f'<div class="aip-reason-chip"><span class="aip-reason-label">{r["label"]}</span>'
-        f'<span class="aip-reason-detail">{r["detail"]}</span></div>'
-        for r in reasons
-    )
-    st.markdown(f'<div style="display:flex; flex-wrap:wrap;">{chips}</div>', unsafe_allow_html=True)
-
-
-def recommendation_cards(placed: bool):
-    """AI Recommendations — Resume / Interview / Skills / Career advice cards."""
-    if placed:
-        cards = [
-            ("📄 Resume", "Keep it tight and quantified — highlight measurable outcomes from projects and internships."),
-            ("🎤 Interview", "Do 2–3 more mock interviews focused on behavioural + role-specific technical rounds."),
-            ("🛠️ Skills", "Deepen one specialisation rather than spreading thin — pick a track and go deep."),
-            ("🧭 Career Advice", "Start shortlisting target companies now and tailor applications to each one."),
-        ]
-    else:
-        cards = [
-            ("📄 Resume", "Add measurable outcomes to every project/internship line — numbers beat adjectives."),
-            ("🎤 Interview", "Book mock interviews weekly; interview reps move this score faster than anything else."),
-            ("🛠️ Skills", "Close active backlogs first, then invest in the technical-skills gap the model flagged."),
-            ("🧭 Career Advice", "Talk to the placement cell about a structured 6-week readiness plan."),
-        ]
-    cols = st.columns(4)
-    for col, (title, body) in zip(cols, cards):
-        with col:
-            st.markdown(f"""
-            <div class="aip-result-card" style="padding:18px 16px;">
-              <div class="aip-eyebrow-sm">{title}</div>
-              <div class="aip-result-body" style="font-size:0.86rem;">{body}</div>
-            </div>
-            """, unsafe_allow_html=True)
+      experience, and returns a clear
