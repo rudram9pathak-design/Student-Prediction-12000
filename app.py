@@ -388,6 +388,11 @@ def get_feature_importance(_model):
         return None
 
 
+def card_header(title, caption):
+    st.markdown(f'<div class="gt-card-title">{title}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="gt-card-caption">{caption}</div>', unsafe_allow_html=True)
+
+
 def risk_badge_html(proba_pct):
     if proba_pct >= 70:
         return '<span class="gt-badge gt-badge-high">Strong Fit</span>'
@@ -634,10 +639,6 @@ elif st.session_state.page == "predict":
         "Coding_Platform_Rating", "Technical_Skills_Score", "Soft_Skills_Score",
         "Resume_Score", "Communication_Rating",
     }
-
-    def card_header(title, caption):
-        st.markdown(f'<div class="gt-card-title">{title}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="gt-card-caption">{caption}</div>', unsafe_allow_html=True)
 
     def score_input(container, feat):
         lo, hi = numeric_ranges[feat]
