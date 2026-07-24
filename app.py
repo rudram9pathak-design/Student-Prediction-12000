@@ -34,162 +34,125 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
 :root{
-    --gt-void:          #0C0716;
+    --gt-void:          #100A1C;
     --gt-purple-deep:   #2A1650;
     --gt-purple:        #4F2D7F;
     --gt-purple-light:  #AA8CE0;
     --gt-gold:          #C9A227;
-    --gt-gold-light:    #F0D375;
-    --gt-gold-dim:      rgba(201,162,39,0.16);
-    --gt-red:           #E24C63;
-    --gt-ink:           #F5F1FC;
-    --gt-muted:         #9C8FBD;
-    --gt-card-bg:       rgba(30, 20, 51, 0.55);
-    --gt-card-bg-2:     #1E1633;
-    --gt-hairline:      rgba(201,162,39,0.22);
+    --gt-gold-light:    #E8C874;
+    --gt-red:           #E0637A;
+    --gt-ink:           #EDE9F5;
+    --gt-muted:         #8F84A8;
+    --gt-line:          rgba(255,255,255,0.09);
+    --gt-card-bg:       #170F28;
+    --gt-card-bg-2:     #1B1330;
 }
 
 html, body, [class*="css"]  { font-family: 'Manrope', sans-serif; }
 h1, h2, h3, .gt-display { font-family: 'Fraunces', serif; }
 
-.stApp{
-    background:
-        radial-gradient(1200px 700px at 85% -8%, rgba(201,162,39,0.10) 0%, transparent 55%),
-        radial-gradient(900px 600px at -10% 15%, rgba(155,123,212,0.14) 0%, transparent 50%),
-        radial-gradient(ellipse at top, #201335 0%, #0F0A1C 55%, var(--gt-void) 100%);
-    background-attachment: fixed;
-}
-.stApp::before{
-    content:"";
-    position: fixed; inset: 0; pointer-events: none; z-index: 0;
-    background-image: radial-gradient(rgba(240,211,117,0.07) 1px, transparent 1px);
-    background-size: 26px 26px;
-    mask-image: radial-gradient(ellipse 900px 700px at 70% 0%, black 0%, transparent 70%);
-}
+.stApp{ background: var(--gt-void); }
 #MainMenu, footer, header[data-testid="stHeader"] { visibility: hidden; height: 0; }
-.block-container { padding-top: 1.2rem; max-width: 900px; }
+.block-container { padding-top: 1.2rem; max-width: 880px; }
 p, span, label, .stMarkdown, div[data-testid="stCaptionContainer"] { color: var(--gt-ink); }
 .stCaption, [data-testid="stCaptionContainer"] p { color: var(--gt-muted) !important; }
 
 /* ---------- Shared: mono eyebrow label ---------- */
 .gt-eyebrow{
-    font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:0.72rem;
-    letter-spacing:0.16em; text-transform:uppercase; color: var(--gt-gold-light);
-    display:flex; align-items:center; gap:8px;
-}
-.gt-eyebrow::before{
-    content:""; width:7px; height:7px; border-radius:50%;
-    border:1.5px solid var(--gt-gold-light); flex-shrink:0;
+    font-family:'IBM Plex Mono', monospace; font-weight:500; font-size:0.7rem;
+    letter-spacing:0.14em; text-transform:uppercase; color: var(--gt-gold-light);
 }
 
 /* ---------- Banner ---------- */
 .gt-banner{
-    background: linear-gradient(120deg, var(--gt-purple-deep) 0%, var(--gt-purple) 100%);
-    border-radius: 16px;
-    border-bottom: 2px solid var(--gt-gold);
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    background: var(--gt-purple-deep);
+    border-radius: 12px;
+    padding: 15px 22px;
+    display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 14px;
-    position: relative;
-    z-index: 1;
 }
 .gt-banner-left{ display:flex; align-items:center; gap:12px; }
 .gt-wordmark{ display:flex; flex-direction:column; line-height:1.05; }
-.gt-wordmark .gt-name{ color:#FFFFFF; font-family:'Fraunces',serif; font-weight:600; font-size:1.05rem; letter-spacing:0.01em; }
-.gt-wordmark .gt-sub{ color: var(--gt-gold-light); font-family:'IBM Plex Mono',monospace; font-size:0.66rem; letter-spacing:0.14em; text-transform:uppercase; margin-top:3px; }
+.gt-wordmark .gt-name{ color:#FFFFFF; font-family:'Fraunces',serif; font-weight:600; font-size:1.02rem; }
+.gt-wordmark .gt-sub{ color: var(--gt-gold-light); font-family:'IBM Plex Mono',monospace; font-size:0.64rem; letter-spacing:0.12em; text-transform:uppercase; margin-top:3px; }
 
 /* ---------- Nav rail ---------- */
 div[data-testid="column"] div.stButton > button{
-    border-radius: 999px !important;
-    font-family:'Manrope',sans-serif; font-weight:700; font-size:0.83rem;
+    border-radius: 10px !important;
+    font-family:'Manrope',sans-serif; font-weight:600; font-size:0.83rem;
     padding: 0.55rem 0.4rem;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: background 0.15s ease;
 }
-div[data-testid="column"] div.stButton > button:hover{ transform: translateY(-1px); }
 div.stButton > button[kind="secondary"]{
-    background: rgba(255,255,255,0.03);
+    background: transparent;
     color: var(--gt-muted);
-    border: 1px solid rgba(155,123,212,0.22);
+    border: 1px solid var(--gt-line);
 }
+div.stButton > button[kind="secondary"]:hover{ border-color: rgba(201,162,39,0.4); color: var(--gt-ink); }
 div.stButton > button[kind="primary"]{
-    background: linear-gradient(120deg, var(--gt-purple) 0%, var(--gt-purple-light) 100%);
+    background: var(--gt-purple);
     color: #fff; border: none; border-bottom: 2px solid var(--gt-gold);
-    box-shadow: 0 6px 18px rgba(79,45,127,0.5);
 }
 
 /* ---------- Hero card ---------- */
 .gt-hero{
-    background: linear-gradient(135deg, var(--gt-purple-deep) 0%, #1B1030 100%);
-    border: 1px solid rgba(155,123,212,0.2);
-    border-radius: 22px;
-    padding: 44px 40px;
+    background: var(--gt-card-bg);
+    border: 1px solid var(--gt-line);
+    border-radius: 16px;
+    padding: 40px 36px;
     margin-top: 10px;
     position: relative;
     overflow: hidden;
-    z-index: 1;
 }
 .gt-hero-watermark{
-    position: absolute; right: -60px; top: -60px; width: 320px; height: 320px;
-    opacity: 0.16; pointer-events: none;
+    position: absolute; right: -50px; top: -50px; width: 260px; height: 260px;
+    opacity: 0.08; pointer-events: none;
 }
 .gt-hero h1{
-    font-family:'Fraunces',serif; font-weight:600; font-size:2.3rem; color:#fff;
-    margin: 14px 0 14px 0; line-height:1.18; max-width: 560px; position: relative;
+    font-family:'Fraunces',serif; font-weight:500; font-size:2.15rem; color:#fff;
+    margin: 14px 0 14px 0; line-height:1.2; max-width: 540px; position: relative;
 }
 .gt-hero h1 em{ font-style: italic; color: var(--gt-gold-light); font-weight:500; }
-.gt-hero p{ color: var(--gt-muted); font-size:1.02rem; max-width: 480px; position: relative; }
-.gt-proof-strip{ display:flex; gap:10px; flex-wrap:wrap; margin-top:22px; position:relative; }
-.gt-proof-chip{
-    font-family:'IBM Plex Mono',monospace; font-size:0.76rem; color: var(--gt-ink);
-    background: rgba(255,255,255,0.05); border: 1px solid var(--gt-hairline);
-    border-radius: 10px; padding: 7px 12px;
-}
-.gt-proof-chip b{ color: var(--gt-gold-light); font-weight:700; }
+.gt-hero p{ color: var(--gt-muted); font-size:1rem; max-width: 470px; position: relative; }
+.gt-proof-strip{ display:flex; gap:22px; flex-wrap:wrap; margin-top:24px; padding-top:20px; border-top: 1px solid var(--gt-line); position:relative; }
+.gt-proof-chip{ font-family:'IBM Plex Mono',monospace; font-size:0.76rem; color: var(--gt-muted); }
+.gt-proof-chip b{ display:block; font-family:'Fraunces',serif; font-size:1.3rem; color: var(--gt-ink); font-weight:500; margin-top:2px; }
 
 /* ---------- Section eyebrow / card ---------- */
 .gt-card-title{
-    font-family:'Fraunces',serif; font-weight:600; color:#fff; font-size:1.12rem;
-    margin-bottom:3px; display:flex; align-items:center; gap:9px;
+    font-family:'Fraunces',serif; font-weight:600; color:#fff; font-size:1.08rem;
+    margin-bottom:3px;
 }
-.gt-card-title::before{
-    content:""; width:11px; height:11px; flex-shrink:0; border-radius:50%;
-    border: 2px solid var(--gt-gold); box-shadow: 3px 0 0 -1.5px var(--gt-purple-light);
-}
-.gt-card-caption{ color: var(--gt-muted); font-size:0.85rem; margin-bottom: 14px; margin-left: 20px; }
+.gt-card-caption{ color: var(--gt-muted); font-size:0.85rem; margin-bottom: 14px; }
 
 div[data-testid="stVerticalBlockBorderWrapper"]{
     background: var(--gt-card-bg) !important;
-    backdrop-filter: blur(14px);
-    border: 1px solid rgba(155,123,212,0.18) !important;
-    border-top: 2px solid var(--gt-hairline) !important;
-    border-radius: 18px !important;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.28);
+    border: 1px solid var(--gt-line) !important;
+    border-radius: 14px !important;
+    box-shadow: none;
 }
 
 /* ---------- Inputs on dark surface ---------- */
 div[data-testid="stTextInput"] input, div[data-testid="stNumberInput"] input{
     background: var(--gt-card-bg-2) !important;
     color: var(--gt-ink) !important;
-    border: 1px solid rgba(155,123,212,0.25) !important;
-    border-radius: 10px !important;
+    border: 1px solid var(--gt-line) !important;
+    border-radius: 8px !important;
 }
 div[data-baseweb="select"] > div{
     background: var(--gt-card-bg-2) !important;
-    border-color: rgba(155,123,212,0.25) !important;
-    border-radius: 10px !important;
+    border-color: var(--gt-line) !important;
+    border-radius: 8px !important;
 }
 
 /* ---------- Radio pills (Yes/No, checklist) ---------- */
 div[data-testid="stRadio"] > div{ gap: 8px; }
 div[data-testid="stRadio"] label{
     background: var(--gt-card-bg-2);
-    border: 1px solid rgba(155,123,212,0.25);
+    border: 1px solid var(--gt-line);
     border-radius: 999px;
     padding: 4px 14px !important;
     margin: 2px 4px 2px 0 !important;
@@ -197,115 +160,128 @@ div[data-testid="stRadio"] label{
 
 /* ---------- Buttons (form submit) ---------- */
 div[data-testid="stFormSubmitButton"] > button{
-    background: linear-gradient(120deg, var(--gt-purple) 0%, var(--gt-gold) 160%);
-    color: #fff; border: none; border-radius: 12px;
-    font-family:'Manrope',sans-serif; font-weight:800; letter-spacing:0.01em;
+    background: var(--gt-purple);
+    color: #fff; border: none; border-radius: 10px;
+    font-family:'Manrope',sans-serif; font-weight:700; letter-spacing:0.01em;
     padding: 0.85rem 1.2rem; font-size: 1rem;
-    box-shadow: 0 8px 22px rgba(79,45,127,0.45);
-    transition: transform 0.15s ease;
+    border-bottom: 2px solid var(--gt-gold);
 }
-div[data-testid="stFormSubmitButton"] > button:hover{ transform: translateY(-1px); }
 
 /* ---------- Expander ---------- */
 div[data-testid="stExpander"]{
-    border: 1px solid rgba(155,123,212,0.2) !important;
-    border-radius: 14px !important;
+    border: 1px solid var(--gt-line) !important;
+    border-radius: 12px !important;
     background: var(--gt-card-bg);
 }
 
 /* ---------- Result cards ---------- */
 .gt-result-card{
     background: var(--gt-card-bg);
-    border: 1px solid rgba(155,123,212,0.2);
-    border-top: 2px solid var(--gt-hairline);
-    border-radius: 18px;
+    border: 1px solid var(--gt-line);
+    border-radius: 14px;
     padding: 22px 24px;
     height: 100%;
 }
-.gt-eyebrow-small{ font-family:'IBM Plex Mono',monospace; color: var(--gt-gold-light); font-weight:600; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px; }
-.gt-result-name{ font-family:'Fraunces',serif; font-weight:600; font-size:1.55rem; color:#fff; margin: 2px 0 10px 0; }
+.gt-eyebrow-small{ font-family:'IBM Plex Mono',monospace; color: var(--gt-gold-light); font-weight:500; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px; }
+.gt-result-name{ font-family:'Fraunces',serif; font-weight:600; font-size:1.5rem; color:#fff; margin: 2px 0 10px 0; }
 .gt-pill{ display:inline-block; border-radius:999px; padding: 5px 16px; font-weight:700; font-size:0.85rem; margin-bottom: 12px; }
-.gt-pill-win{ background: rgba(201,162,39,0.18); color: var(--gt-gold-light); border: 1px solid rgba(201,162,39,0.4); }
-.gt-pill-risk{ background: rgba(226,76,99,0.15); color: var(--gt-red); border: 1px solid rgba(226,76,99,0.4); }
+.gt-pill-win{ background: rgba(201,162,39,0.15); color: var(--gt-gold-light); border: 1px solid rgba(201,162,39,0.35); }
+.gt-pill-risk{ background: rgba(224,99,122,0.13); color: var(--gt-red); border: 1px solid rgba(224,99,122,0.35); }
 .gt-result-body{ color: var(--gt-muted); font-size: 0.95rem; line-height:1.5; }
 
 /* ---------- Gauge ---------- */
 .gt-gauge-wrap{ display:flex; flex-direction:column; align-items:center; }
 .gt-gauge{
-    width:168px; height:168px; border-radius:50%;
-    background: conic-gradient(var(--gauge-color) calc(var(--pct)*1%), rgba(255,255,255,0.07) 0);
+    width:164px; height:164px; border-radius:50%;
+    background: conic-gradient(var(--gauge-color) calc(var(--pct)*1%), rgba(255,255,255,0.06) 0);
     display:flex; align-items:center; justify-content:center;
     margin: 6px auto 4px auto;
 }
 .gt-gauge-inner{
-    width:130px; height:130px; border-radius:50%;
-    background: #180F2C;
+    width:128px; height:128px; border-radius:50%;
+    background: var(--gt-card-bg);
     display:flex; flex-direction:column; align-items:center; justify-content:center;
 }
-.gt-gauge-value{ font-family:'Fraunces',serif; font-size:1.6rem; font-weight:600; color:#fff; }
+.gt-gauge-value{ font-family:'Fraunces',serif; font-size:1.55rem; font-weight:600; color:#fff; }
 .gt-gauge-label{ font-family:'IBM Plex Mono',monospace; font-size:0.6rem; letter-spacing:0.1em; color: var(--gt-muted); margin-top:4px; text-transform:uppercase; }
 
 .gt-track{
-    width:100%; height:8px; border-radius:999px; margin: 14px 0 10px 0;
-    background: rgba(255,255,255,0.08); overflow:hidden;
+    width:100%; height:6px; border-radius:999px; margin: 14px 0 10px 0;
+    background: rgba(255,255,255,0.07); overflow:hidden;
 }
-.gt-track-fill{ height:100%; border-radius:999px; background: linear-gradient(90deg, var(--gt-purple-light), var(--gt-gold)); }
+.gt-track-fill{ height:100%; border-radius:999px; background: var(--gt-gold); }
 
 .gt-stat-row{ display:flex; justify-content:space-between; margin-top: 6px; }
 .gt-stat-label{ color: var(--gt-muted); font-size:0.8rem; }
-.gt-stat-value{ font-family:'Fraunces',serif; font-weight:600; font-size:1.2rem; color: var(--gt-gold-light); }
+.gt-stat-value{ font-family:'Fraunces',serif; font-weight:600; font-size:1.15rem; color: var(--gt-gold-light); }
 
-.gt-footer{ text-align:center; color: var(--gt-muted); font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.02em; margin-top: 34px; padding: 18px 0 10px 0; border-top: 1px solid rgba(155,123,212,0.14); }
+.gt-footer{ text-align:center; color: var(--gt-muted); font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.02em; margin-top: 34px; padding: 18px 0 10px 0; border-top: 1px solid var(--gt-line); }
 
 /* ---------- Metric cards (Model Performance) ---------- */
 .gt-metric-card{
     background: var(--gt-card-bg);
-    border: 1px solid rgba(155,123,212,0.2);
-    border-top: 2px solid var(--gt-hairline);
-    border-radius: 16px;
+    border: 1px solid var(--gt-line);
+    border-radius: 14px;
     padding: 20px 14px;
     text-align: center;
-    transition: transform 0.15s ease;
 }
-.gt-metric-card:hover{ transform: translateY(-2px); }
-.gt-metric-value{ font-family:'Fraunces',serif; font-weight:600; font-size:1.85rem; color: var(--gt-gold-light); }
-.gt-metric-label{ font-family:'IBM Plex Mono',monospace; color: var(--gt-muted); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; margin-top:6px; }
+.gt-metric-value{ font-family:'Fraunces',serif; font-weight:600; font-size:1.8rem; color: var(--gt-gold-light); }
+.gt-metric-label{ font-family:'IBM Plex Mono',monospace; color: var(--gt-muted); font-size:0.66rem; text-transform:uppercase; letter-spacing:0.08em; margin-top:6px; }
 
 /* ---------- File uploader ---------- */
 div[data-testid="stFileUploaderDropzone"]{
     background: var(--gt-card-bg-2) !important;
-    border: 1.5px dashed rgba(201,162,39,0.4) !important;
-    border-radius: 14px !important;
+    border: 1.5px dashed var(--gt-line) !important;
+    border-radius: 12px !important;
 }
 section[data-testid="stFileUploaderDropzoneInstructions"] span,
 section[data-testid="stFileUploaderDropzoneInstructions"] small{ color: var(--gt-muted) !important; }
 
 /* ---------- Dataframe / table ---------- */
 div[data-testid="stDataFrame"]{
-    border: 1px solid rgba(155,123,212,0.2);
-    border-radius: 12px;
+    border: 1px solid var(--gt-line);
+    border-radius: 10px;
     overflow: hidden;
 }
 
 /* ---------- Tabs ---------- */
-button[data-testid="stTab"]{ color: var(--gt-muted); font-family:'Manrope',sans-serif; font-weight:700; }
+button[data-testid="stTab"]{ color: var(--gt-muted); font-family:'Manrope',sans-serif; font-weight:600; }
 button[data-testid="stTab"][aria-selected="true"]{ color: var(--gt-gold-light) !important; }
 div[data-baseweb="tab-highlight"]{ background-color: var(--gt-gold) !important; }
-div[data-baseweb="tab-border"]{ background-color: rgba(155,123,212,0.2) !important; }
+div[data-baseweb="tab-border"]{ background-color: var(--gt-line) !important; }
 
 /* ---------- Pill badges (risk levels) ---------- */
 .gt-badge{ display:inline-block; border-radius:999px; padding: 3px 12px; font-weight:700; font-size:0.78rem; }
-.gt-badge-high{ background: rgba(201,162,39,0.18); color: var(--gt-gold-light); border: 1px solid rgba(201,162,39,0.4); }
-.gt-badge-mid{ background: rgba(155,123,212,0.18); color: var(--gt-purple-light); border: 1px solid rgba(155,123,212,0.4); }
-.gt-badge-low{ background: rgba(226,76,99,0.15); color: var(--gt-red); border: 1px solid rgba(226,76,99,0.4); }
+.gt-badge-high{ background: rgba(201,162,39,0.15); color: var(--gt-gold-light); border: 1px solid rgba(201,162,39,0.35); }
+.gt-badge-mid{ background: rgba(155,123,212,0.15); color: var(--gt-purple-light); border: 1px solid rgba(155,123,212,0.35); }
+.gt-badge-low{ background: rgba(224,99,122,0.13); color: var(--gt-red); border: 1px solid rgba(224,99,122,0.35); }
 
 /* ---------- Sidebar ---------- */
 section[data-testid="stSidebar"]{
-    background: linear-gradient(180deg, #1B1030 0%, #130C22 100%) !important;
-    border-right: 1px solid rgba(155,123,212,0.18);
+    background: #140C24 !important;
+    border-right: 1px solid var(--gt-line);
 }
-section[data-testid="stSidebar"] hr{ border-color: rgba(155,123,212,0.2); }
+section[data-testid="stSidebar"] hr{ border-color: var(--gt-line); }
 section[data-testid="stSidebar"] a{ color: var(--gt-gold-light) !important; }
+
+/* ---------- Decision-threshold slider — colour-coded risk zones ---------- */
+/* Track: flat red (At Risk, 0-40) -> purple (Borderline, 40-70) -> gold (Strong Fit, 70-100),
+   matching the same thresholds used by risk_badge_html() elsewhere in the app. */
+div[data-testid="stSlider"] [data-orientation="horizontal"] [data-orientation="horizontal"] > div:first-child{
+    background: linear-gradient(90deg,
+        var(--gt-red) 0%, var(--gt-red) 40%,
+        var(--gt-purple-light) 40%, var(--gt-purple-light) 70%,
+        var(--gt-gold) 70%, var(--gt-gold) 100%) !important;
+    height: 5px !important;
+    opacity: 0.9;
+}
+div[data-testid="stSliderThumbValue"]{
+    background: var(--gt-card-bg-2) !important;
+    border: 1px solid var(--gt-line) !important;
+    color: var(--gt-ink) !important;
+    font-family:'IBM Plex Mono',monospace !important;
+}
+div[data-testid="stSliderTickBar"] p{ font-family:'IBM Plex Mono',monospace; font-size:0.68rem; color: var(--gt-muted); }
 
 /* ---------- Focus visibility (accessibility) ---------- */
 button:focus-visible, input:focus-visible, a:focus-visible{
@@ -666,9 +642,9 @@ if st.session_state.page == "home":
       experience, and returns a clear placement-readiness read — with the reasoning
       behind it, not just a number.</p>
       <div class="gt-proof-strip">
-        <div class="gt-proof-chip">Hold-out accuracy <b>{test_metrics['Accuracy']*100:.1f}%</b></div>
-        <div class="gt-proof-chip">ROC-AUC <b>{test_metrics['ROC-AUC']*100:.1f}%</b></div>
-        <div class="gt-proof-chip">Recall <b>{test_metrics['Recall']*100:.1f}%</b></div>
+        <div class="gt-proof-chip">Hold-out accuracy<b>{test_metrics['Accuracy']*100:.1f}%</b></div>
+        <div class="gt-proof-chip">ROC-AUC<b>{test_metrics['ROC-AUC']*100:.1f}%</b></div>
+        <div class="gt-proof-chip">Recall<b>{test_metrics['Recall']*100:.1f}%</b></div>
       </div>
     </div>
     """, unsafe_allow_html=True)
@@ -1162,6 +1138,24 @@ elif st.session_state.page == "performance":
                 </div>
                 """, unsafe_allow_html=True)
 
+        st.markdown("<br>", unsafe_allow_html=True)
+        fig, ax = plt.subplots(figsize=(8, 2.6))
+        fig.patch.set_facecolor(GT_PANEL)
+        ax.set_facecolor(GT_PANEL)
+        labels = [d[0] for d in metric_defs]
+        values = [d[1] * 100 for d in metric_defs]
+        bars = ax.bar(labels, values, color=GT_PURPLE_LIGHT, width=0.55)
+        ax.bar_label(bars, fmt="%.1f%%", fontsize=8.5, color=GT_INK, padding=3)
+        ax.set_ylim(0, 108)
+        ax.set_yticks([])
+        ax.tick_params(axis="x", colors=GT_INK, labelsize=9.5)
+        for spine in ["top", "right", "left"]:
+            ax.spines[spine].set_visible(False)
+        ax.spines["bottom"].set_color("#E3DCF2")
+        fig.tight_layout()
+        st.pyplot(fig, use_container_width=True)
+        plt.close(fig)
+
     st.markdown("<br>", unsafe_allow_html=True)
 
     with st.container(border=True):
@@ -1192,6 +1186,37 @@ elif st.session_state.page == "performance":
                 "top-feature list saved during training instead."
             )
             st.write(", ".join(top_features))
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    with st.container(border=True):
+        card_header(
+            "Spread of the top features",
+            "Min–max range observed for each field in the training data. There's no saved test-set "
+            "sample to compute real quartiles from, so this shows range rather than a true quartile "
+            "box plot — an honest stand-in, not a substitute for one.",
+        )
+        range_feats = [f for f in top_features if f in numeric_ranges][:10]
+        if range_feats:
+            fig, ax = plt.subplots(figsize=(8, 0.42 * len(range_feats) + 1))
+            fig.patch.set_facecolor(GT_PANEL)
+            ax.set_facecolor(GT_PANEL)
+            for i, feat in enumerate(reversed(range_feats)):
+                lo, hi = numeric_ranges[feat]
+                ax.barh(i, hi - lo, left=lo, height=0.42, color=GT_PURPLE_LIGHT, edgecolor=GT_PURPLE, linewidth=1)
+                ax.text(lo, i, f" {lo:g}", va="center", ha="right", fontsize=7.5, color=GT_MUTED)
+                ax.text(hi, i, f" {hi:g}", va="center", ha="left", fontsize=7.5, color=GT_MUTED)
+            ax.set_yticks(range(len(range_feats)))
+            ax.set_yticklabels([FRIENDLY_LABELS.get(f, f) for f in reversed(range_feats)], fontsize=9, color=GT_INK)
+            ax.set_xlabel("Value range", color=GT_INK, fontsize=9)
+            ax.tick_params(axis="x", colors=GT_MUTED, labelsize=8)
+            for spine in ["top", "right", "left"]:
+                ax.spines[spine].set_visible(False)
+            fig.tight_layout()
+            st.pyplot(fig, use_container_width=True)
+            plt.close(fig)
+        else:
+            st.caption("No numeric range data available for the top features.")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
